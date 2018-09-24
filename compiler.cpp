@@ -6,34 +6,33 @@
 
 class ParseUtils {
 public:
-  // Constructs the string_view of the token that extends between the beginning
-  // of the line represented by aStmt and position of the operator at
-  // aStmt[aOpPos]
-  static std::string_view ExtractTokenViewBefore(const std::string &aStmt,
-                                                 std::size_t aOpPos) {
-    auto varNameStart = std::find_if(aStmt.begin(), aStmt.begin() + aOpPos,
-                                     [](char c) { return !std::isspace(c); });
+  //! Constructs the string_view of the token that extends between
+  //! aStmt[aPos1+1] and aStmt[aPos2-1].
+  static std::string_view ExtractTokenViewBetween(const std::string &aStmt,
+                                                  std::size_t aPos1,
+                                                  std::size_t aPos2) {
+    auto tokenStart =
+        std::find_if(aStmt.begin() + aPos1 + 1, aStmt.begin() + aPos2,
+                     [](char c) { return !std::isspace(c); });
 
-    auto varNameEnd = std::find_if(varNameStart, aStmt.begin() + aOpPos,
-                                   [](char c) { return std::isspace(c); });
+    auto tokenEnd = std::find_if(tokenStart, aStmt.begin() + aPos2,
+                                 [](char c) { return std::isspace(c); });
 
-    // TODO Check whether the next token is the token of not. This handles the
-    // case where a token has a white-space.
-    return std::string_view(&*varNameStart, varNameEnd - varNameStart);
+    return std::string_view(&*tokenStart, tokenEnd - tokenStart);
   }
 
-  // Constructs the string_view of the token that extends between the position
-  // of the operator at aStmt[aOpPos] and the end of the line represented by
-  // aStmt;
+  //! Constructs the string_view of the token that extends between
+  //! aStmt[0] and aStmt[aPos-1].
+  static std::string_view ExtractTokenViewBefore(const std::string &aStmt,
+                                                 std::size_t aPos) {
+    return ExtractTokenViewBetween(aStmt, -1, aPos);
+  }
+
+  //! Constructs the string_view of the token that extends between
+  //! aStmt[aPos] and aStmt[aStmt.size() - 1].
   static std::string_view ExtractTokenViewAfter(const std::string &aStmt,
-                                                std::size_t aOpPos) {
-    auto valStart = std::find_if(aStmt.begin() + aOpPos + 1, aStmt.end(),
-                                 [](char c) { return !std::isspace(c); });
-
-    auto valEnd = std::find_if(valStart, aStmt.end(),
-                               [](char c) { return std::isspace(c); });
-
-    return std::string_view(&*valStart, valEnd - valStart);
+                                                std::size_t aPos) {
+    return ExtractTokenViewBetween(aStmt, aPos, aStmt.size());
   }
 };
 
