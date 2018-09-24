@@ -54,27 +54,48 @@ private:
 class VarDefStmtParser {
 public:
   VarDefStmt operator()(std::string &&aStmt) {
-    auto asgnPos = aStmt.find('=');
+    auto assignPos = aStmt.find('=');
 
-    if (asgnPos == 0 || asgnPos == std::string::npos) {
+    if (assignPos == 0 || assignPos == std::string::npos) {
       throw std::invalid_argument(
           "Syntax error. Invalid assignment statement: " + aStmt);
     }
 
-    return {std::move(aStmt), parseVarName(aStmt, asgnPos),
-            parseVal(aStmt, asgnPos)};
+    return {std::move(aStmt),
+            ParseUtils::ExtractTokenViewBefore(aStmt, assignPos),
+            ParseUtils::ExtractTokenViewAfter(aStmt, assignPos)};
+  }
+};
+
+class AddStmt {
+public:
+  AddStmt(std::string &&aStmt, const std::string_view &aAssignedVarView,
+          const std::string_view &aLHSVarView,
+          const std::string_view &aRHSVarView)
+      : iStmt(aStmt), iAssignedVarView(aAssignedVarView),
+        iLHSVarView(aLHSVarView), iRHSVarView(aRHSVarView) {
+    std::cout << "Assigned variable name: " << iAssignedVarView << std::endl;
+    std::cout << "LHS variable name: " << iLHSVarView << std::endl;
+    std::cout << "RHS variable name: " << iRHSVarView << std::endl;
   }
 
 private:
-  std::string_view parseVarName(const std::string &aStmt,
-                                std::size_t aAsgnPos) {
-    // TODO Add syntactic checking for valid variable names.
-    return ParseUtils::ExtractTokenViewBefore(aStmt, aAsgnPos);
-  }
+  std::string iStmt;
+  std::string_view iAssignedVarView;
+  std::string_view iLHSVarView;
+  std::string_view iRHSVarView;
+};
 
-  std::string_view parseVal(const std::string &aStmt, std::size_t aAsgnPos) {
-    // TODO Add syntactic checking for valid integer values.
-    return ParseUtils::ExtractTokenViewAfter(aStmt, aAsgnPos);
+class AddStmtParser {
+public:
+  AddStmt operator()(std::string &&aStmt) {
+    auto assignPos = aStmt.find('=');
+    auto plusPos = aStmt.find('+');
+
+    return {std::move(aStmt),
+            ParseUtils::ExtractTokenViewBefore(aStmt, assignPos),
+            ParseUtils::ExtractTokenViewBetween(aStmt, assignPos, plusPos),
+            ParseUtils::ExtractTokenViewAfter(aStmt, plusPos)};
   }
 };
 
@@ -83,11 +104,17 @@ public:
   void operator()(std::ifstream &&aIn) {
     constexpr size_t BUF_SIZE = 256;
     char buf[BUF_SIZE];
+    VarDefStmtParser varDefParser;
+    AddStmtParser addParser;
 
     while (aIn.getline(buf, BUF_SIZE)) {
       std::string line(buf);
       std::cout << "-- " << line << std::endl;
-      VarDefStmtParser()(std::move(line));
+      if (line.find('+') != std::string::npos) {
+        addParser(std::move(line));
+      } else {
+        varDefParser(std::move(line));
+      }
     }
   }
 };

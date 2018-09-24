@@ -1,4 +1,6 @@
   x   =   1  
-yy = 22
+y = 2
+z = 0
+z = x + y
 line2
 line3
