@@ -2,7 +2,9 @@
 
 #include <algorithm>
 #include <fstream>
+#include <memory>
 #include <string_view>
+#include <vector>
 
 class ParseUtils {
 public:
@@ -67,7 +69,8 @@ public:
 
 class SrcFileParser {
 public:
-  void operator()(std::ifstream &&aIn) {
+  std::vector<std::unique_ptr<IStmtAST>> operator()(std::ifstream &&aIn) {
+    std::vector<std::unique_ptr<IStmtAST>> result;
     constexpr size_t BUF_SIZE = 256;
     char buf[BUF_SIZE];
     VarDefStmtParser varDefParser;
@@ -75,12 +78,14 @@ public:
 
     while (aIn.getline(buf, BUF_SIZE)) {
       std::string line(buf);
-      std::cout << "-- " << line << std::endl;
       if (line.find('+') != std::string::npos) {
-        addParser(std::move(line));
+        result.push_back(std::make_unique<AddStmt>(addParser(std::move(line))));
       } else {
-        varDefParser(std::move(line));
+        result.push_back(
+            std::make_unique<VarDefStmt>(varDefParser(std::move(line))));
       }
     }
+
+    return result;
   }
 };
