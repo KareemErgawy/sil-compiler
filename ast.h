@@ -4,6 +4,8 @@
 #include <sstream>
 #include <string>
 
+enum class StmtType { VarDef, Add };
+
 class IStmtAST {
 public:
   IStmtAST(std::string &aStmt) : iStmt(aStmt) {}
@@ -11,6 +13,8 @@ public:
   virtual ~IStmtAST() = default;
 
   virtual std::string Dump() const = 0;
+
+  virtual StmtType GetStmtType() const = 0;
 
 protected:
   std::string iStmt;
@@ -30,9 +34,10 @@ public:
     return ss.str();
   }
 
-private:
-  std::string iVarNameView;
-  std::string iValView;
+  StmtType GetStmtType() const override { return StmtType::VarDef; }
+
+  const std::string iVarNameView;
+  const std::string iValView;
 };
 
 class AddStmt : public IStmtAST {
@@ -50,10 +55,11 @@ public:
     return ss.str();
   }
 
-private:
-  std::string iAssignedVarView;
-  std::string iLHSVarView;
-  std::string iRHSVarView;
+  StmtType GetStmtType() const override { return StmtType::Add; }
+
+  const std::string iAssignedVarView;
+  const std::string iLHSVarView;
+  const std::string iRHSVarView;
 };
 
 #endif
