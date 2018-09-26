@@ -22,44 +22,44 @@ protected:
 
 class VarDefStmt : public IStmtAST {
 public:
-  VarDefStmt(std::string &aStmt, const std::string &aVarNameView,
-             const std::string &aValView)
-      : IStmtAST(aStmt), iVarNameView(aVarNameView), iValView(aValView) {}
+  VarDefStmt(std::string &aStmt, const std::string &aVarName,
+             const std::string &aVal)
+      : IStmtAST(aStmt), iVarName(aVarName), iVal(aVal) {}
 
   std::string Dump() const override {
     std::stringstream ss;
-    ss << "VarDefStmt [ defines variable: " << iVarNameView
-       << " with value: " << iValView << " ]";
+    ss << "VarDefStmt [ defines variable: " << iVarName
+       << " with value: " << iVal << " ]";
 
     return ss.str();
   }
 
   StmtType GetStmtType() const override { return StmtType::VarDef; }
 
-  const std::string iVarNameView;
-  const std::string iValView;
+  const std::string iVarName;
+  const std::string iVal;
 };
 
 class AddStmt : public IStmtAST {
 public:
-  AddStmt(std::string &aStmt, const std::string &aAssignedVarView,
-          const std::string &aLHSVarView, const std::string &aRHSVarView)
-      : IStmtAST(aStmt), iAssignedVarView(aAssignedVarView),
-        iLHSVarView(aLHSVarView), iRHSVarView(aRHSVarView) {}
+  AddStmt(std::string &aStmt, const std::string &aAssignedVar,
+          const std::string &aLHSVar, const std::string &aRHSVar)
+      : IStmtAST(aStmt), iAssignedVar(aAssignedVar), iLHSVar(aLHSVar),
+        iRHSVar(aRHSVar) {}
 
   std::string Dump() const override {
     std::stringstream ss;
-    ss << "AddStmt [ assigns variable: " << iAssignedVarView
-       << " with: " << iLHSVarView << " + " << iRHSVarView << " ]";
+    ss << "AddStmt [ assigns variable: " << iAssignedVar << " with: " << iLHSVar
+       << " + " << iRHSVar << " ]";
 
     return ss.str();
   }
 
   StmtType GetStmtType() const override { return StmtType::Add; }
 
-  const std::string iAssignedVarView;
-  const std::string iLHSVarView;
-  const std::string iRHSVarView;
+  const std::string iAssignedVar;
+  const std::string iLHSVar;
+  const std::string iRHSVar;
 };
 
 #endif

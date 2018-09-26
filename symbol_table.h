@@ -10,9 +10,9 @@ public:
     for (const auto &stmt : astList) {
       if (stmt->GetStmtType() == StmtType::VarDef) {
         const auto &varDefStmt = static_cast<VarDefStmt &>(*stmt);
-        varToValMap[varDefStmt.iVarNameView] = std::stoi(varDefStmt.iValView);
-        std::cout << "Mapped: " << varDefStmt.iVarNameView << " to "
-                  << varToValMap[varDefStmt.iVarNameView] << "\n";
+        varToValMap[varDefStmt.iVarName] = std::stoi(varDefStmt.iVal);
+        std::cout << "Mapped: " << varDefStmt.iVarName << " to "
+                  << varToValMap[varDefStmt.iVarName] << "\n";
       }
     }
   }
