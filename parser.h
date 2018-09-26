@@ -10,9 +10,8 @@ class ParseUtils {
 public:
   //! Constructs the string of the token that extends between
   //! aStmt[aPos1+1] and aStmt[aPos2-1].
-  static std::string ExtractTokenViewBetween(const std::string &aStmt,
-                                             std::size_t aPos1,
-                                             std::size_t aPos2) {
+  static std::string ExtractTokenBetween(const std::string &aStmt,
+                                         std::size_t aPos1, std::size_t aPos2) {
     auto tokenStart =
         std::find_if(aStmt.begin() + aPos1 + 1, aStmt.begin() + aPos2,
                      [](char c) { return !std::isspace(c); });
@@ -25,16 +24,16 @@ public:
 
   //! Constructs the string of the token that extends between
   //! aStmt[0] and aStmt[aPos-1].
-  static std::string ExtractTokenViewBefore(const std::string &aStmt,
-                                            std::size_t aPos) {
-    return ExtractTokenViewBetween(aStmt, -1, aPos);
+  static std::string ExtractTokenBefore(const std::string &aStmt,
+                                        std::size_t aPos) {
+    return ExtractTokenBetween(aStmt, -1, aPos);
   }
 
   //! Constructs the string of the token that extends between
   //! aStmt[aPos] and aStmt[aStmt.size() - 1].
-  static std::string ExtractTokenViewAfter(const std::string &aStmt,
-                                           std::size_t aPos) {
-    return ExtractTokenViewBetween(aStmt, aPos, aStmt.size());
+  static std::string ExtractTokenAfter(const std::string &aStmt,
+                                       std::size_t aPos) {
+    return ExtractTokenBetween(aStmt, aPos, aStmt.size());
   }
 };
 
@@ -48,8 +47,8 @@ public:
           "Syntax error. Invalid assignment statement: " + aStmt);
     }
 
-    return {aStmt, ParseUtils::ExtractTokenViewBefore(aStmt, assignPos),
-            ParseUtils::ExtractTokenViewAfter(aStmt, assignPos)};
+    return {aStmt, ParseUtils::ExtractTokenBefore(aStmt, assignPos),
+            ParseUtils::ExtractTokenAfter(aStmt, assignPos)};
   }
 };
 
@@ -59,9 +58,9 @@ public:
     auto assignPos = aStmt.find('=');
     auto plusPos = aStmt.find('+');
 
-    return {aStmt, ParseUtils::ExtractTokenViewBefore(aStmt, assignPos),
-            ParseUtils::ExtractTokenViewBetween(aStmt, assignPos, plusPos),
-            ParseUtils::ExtractTokenViewAfter(aStmt, plusPos)};
+    return {aStmt, ParseUtils::ExtractTokenBefore(aStmt, assignPos),
+            ParseUtils::ExtractTokenBetween(aStmt, assignPos, plusPos),
+            ParseUtils::ExtractTokenAfter(aStmt, plusPos)};
   }
 };
 
