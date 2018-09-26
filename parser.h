@@ -1,4 +1,8 @@
+#ifndef PARSER_H
+#define PARSER_H
+
 #include "ast.h"
+#include "defs.h"
 
 #include <algorithm>
 #include <fstream>
@@ -66,8 +70,8 @@ public:
 
 class SrcFileParser {
 public:
-  std::vector<std::unique_ptr<IStmtAST>> operator()(std::ifstream &&aIn) {
-    std::vector<std::unique_ptr<IStmtAST>> result;
+  StmtASTList operator()(std::ifstream &&aIn) {
+    StmtASTList result;
     constexpr size_t BUF_SIZE = 256;
     char buf[BUF_SIZE];
     VarDefStmtParser varDefParser;
@@ -85,3 +89,5 @@ public:
     return result;
   }
 };
+
+#endif

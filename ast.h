@@ -1,3 +1,6 @@
+#ifndef AST_H
+#define AST_H
+
 #include <sstream>
 #include <string>
 
@@ -52,3 +55,5 @@ private:
   std::string iLHSVarView;
   std::string iRHSVarView;
 };
+
+#endif
