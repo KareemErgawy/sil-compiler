@@ -11,6 +11,33 @@
 #include <utility>
 #include <vector>
 
+std::string Exec(const char *cmd);
+
+bool IsFixNum(std::string token);
+bool IsBool(std::string token);
+bool IsNull(std::string token);
+bool IsChar(std::string token);
+bool IsImmediate(std::string token);
+
+bool IsExpr(std::string expr);
+bool IsImmediate(std::string token);
+bool TryParseUnaryPrimitive(std::string expr,
+                            std::string *outPrimitiveName = nullptr,
+                            std::string *outArg = nullptr);
+bool IsExpr(std::string expr);
+
+char TokenToChar(std::string token);
+int ImmediateRep(std::string token);
+
+using TUnaryPrimitiveEmitter = std::string (*)(std::string);
+std::string EmitExpr(std::string expr);
+std::string EmitFxAddImmediate(std::string fxAddArg,
+                               std::string fxAddImmediate);
+std::string EmitFxAdd1(std::string fxAdd1Arg);
+std::string EmitFxSub1(std::string fxSub1Arg);
+std::string EmitExpr(std::string expr);
+std::string EmitProgram(std::string programSource);
+
 std::string Exec(const char *cmd) {
   std::array<char, 128> buffer;
   std::string result;
@@ -82,15 +109,12 @@ bool IsChar(std::string token) {
          specialChars.find(token[2]) != std::string::npos;
 }
 
-bool IsExpr(std::string expr);
-
 bool IsImmediate(std::string token) {
   return IsBool(token) || IsNull(token) || IsChar(token) || IsFixNum(token);
 }
 
-bool TryParseUnaryPrimitive(std::string expr,
-                            std::string *outPrimitiveName = nullptr,
-                            std::string *outArg = nullptr) {
+bool TryParseUnaryPrimitive(std::string expr, std::string *outPrimitiveName,
+                            std::string *outArg) {
   if (expr.size() < 3) {
     return false;
   }
@@ -178,9 +202,6 @@ int ImmediateRep(std::string token) {
   // Else, must be fixnum.
   return (std::stoi(token) << FxShift) | FxTag;
 }
-
-std::string EmitExpr(std::string expr);
-using TUnaryPrimitiveEmitter = std::string (*)(std::string);
 
 std::string EmitFxAddImmediate(std::string fxAddArg,
                                std::string fxAddImmediate) {
