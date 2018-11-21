@@ -7,6 +7,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -24,6 +25,7 @@ std::string Exec(const char *cmd) {
 }
 
 const unsigned int FxShift = 2;
+const unsigned int FxMask = 0x03;
 const unsigned int FxTag = 0x00;
 
 const unsigned int BoolF = 0x2F;
@@ -80,8 +82,60 @@ bool IsChar(std::string token) {
          specialChars.find(token[2]) != std::string::npos;
 }
 
+bool IsExpr(std::string expr);
+
 bool IsImmediate(std::string token) {
   return IsBool(token) || IsNull(token) || IsChar(token) || IsFixNum(token);
+}
+
+bool TryParseUnaryPrimitive(std::string expr,
+                            std::string *outPrimitiveName = nullptr,
+                            std::string *outArg = nullptr) {
+  if (expr.size() < 3) {
+    return false;
+  }
+
+  if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+    return false;
+  }
+
+  static std::vector<std::string> unaryPrimitiveNames{"fxadd1"};
+
+  std::string primitiveName = "";
+  size_t idx;
+
+  for (idx = 1; idx < (expr.size() - 1) && !std::isspace(expr[idx]); ++idx) {
+    primitiveName = primitiveName + expr[idx];
+  }
+
+  if (std::find(unaryPrimitiveNames.begin(), unaryPrimitiveNames.end(),
+                primitiveName) == unaryPrimitiveNames.end()) {
+    return false;
+  }
+
+  if (outPrimitiveName != nullptr) {
+    *outPrimitiveName = primitiveName;
+  }
+
+  // No argument provided.
+  if (!std::isspace(expr[idx])) {
+    return false;
+  }
+
+  for (; idx < (expr.size() - 1) && std::isspace(expr[idx]); ++idx) {
+  }
+
+  std::string arg = expr.substr(idx, expr.size() - 1 - idx);
+
+  if (outArg != nullptr) {
+    *outArg = arg;
+  }
+
+  return IsExpr(arg);
+}
+
+bool IsExpr(std::string expr) {
+  return IsImmediate(expr) || TryParseUnaryPrimitive(expr);
 }
 
 char TokenToChar(std::string token) {
@@ -125,15 +179,58 @@ int ImmediateRep(std::string token) {
   return (std::stoi(token) << FxShift) | FxTag;
 }
 
+std::string EmitExpr(std::string expr);
+using TUnaryPrimitiveEmitter = std::string (*)(std::string);
+
+std::string EmitFxAdd1(std::string fxAdd1Arg) {
+  std::string argAsm = EmitExpr(fxAdd1Arg);
+
+  std::ostringstream exprEmissionStream;
+  // clang-format off
+  exprEmissionStream 
+      << argAsm 
+      << "    addl $" << ImmediateRep("1") << ", %eax\n";
+  // clang-format on 
+
+  return exprEmissionStream.str();
+}
+
+std::string EmitExpr(std::string expr) {
+  assert(IsExpr(expr));
+
+  if (IsImmediate(expr)) {
+    std::ostringstream exprEmissionStream;
+    // clang-format off
+    exprEmissionStream 
+        << "    movl $" << ImmediateRep(expr) << ", %eax\n";
+    // clang-format on
+
+    return exprEmissionStream.str();
+  }
+
+  std::string primitiveName;
+  std::string arg;
+
+  if (TryParseUnaryPrimitive(expr, &primitiveName, &arg)) {
+    static std::unordered_map<std::string, TUnaryPrimitiveEmitter>
+        unaryEmitters{{"fxadd1", EmitFxAdd1}};
+    return unaryEmitters[primitiveName](arg);
+  }
+
+  assert(false);
+}
+
 std::string EmitProgram(std::string programSource) {
   std::ostringstream programEmissionStream;
-  programEmissionStream << "    .text\n"
-                        << "    .globl scheme_entry\n"
-                        << "    .type scheme_entry, @function\n"
-                        << "scheme_entry:\n"
-                        << "    movl $" << ImmediateRep(programSource)
-                        << ", %eax\n"
-                        << "    ret\n";
+  // clang-format off
+  programEmissionStream 
+      << "    .text\n"
+      << "    .globl scheme_entry\n"
+      << "    .type scheme_entry, @function\n"
+      << "scheme_entry:\n"
+      << EmitExpr(programSource)
+      << "    ret\n";
+  // clang-format on
 
   return programEmissionStream.str();
 }
@@ -141,7 +238,8 @@ std::string EmitProgram(std::string programSource) {
 int main(int argc, char *argv[]) {
   std::vector<std::string> testFilePaths{
       "/home/ergawy/repos/inc-compiler/src/tests-1.1-req.scm",
-      "/home/ergawy/repos/inc-compiler/src/tests-1.2-req.scm"};
+      "/home/ergawy/repos/inc-compiler/src/tests-1.2-req.scm",
+      "/home/ergawy/repos/inc-compiler/src/tests-1.3-req.scm"};
 
   int testCaseCounter = 1;
 
@@ -155,16 +253,26 @@ int main(int argc, char *argv[]) {
 
     const size_t MAX_LINE_SIZE = 100;
     char ignoredLine[MAX_LINE_SIZE];
-    testFile.getline(ignoredLine, MAX_LINE_SIZE);
 
     while (true) {
       char nextChar;
       testFile >> nextChar;
 
-      if (nextChar == ')') {
+      if (testFile.eof()) {
         break;
       }
 
+      // Test suit header
+      if (nextChar == '(') {
+        testFile.getline(ignoredLine, MAX_LINE_SIZE);
+        continue;
+      }
+
+      if (nextChar == ')') {
+        continue;
+      }
+
+      // Comment.
       if (nextChar == ';') {
         testFile.getline(ignoredLine, MAX_LINE_SIZE);
         continue;
@@ -177,18 +285,23 @@ int main(int argc, char *argv[]) {
       // Parse program source.
       std::ostringstream programSourceOutputStream;
 
+      std::string nextProgramSubString;
+      testFile >> nextProgramSubString;
+      programSourceOutputStream << nextProgramSubString;
+
       while (true) {
-        std::string nextProgramSubString;
         testFile >> nextProgramSubString;
 
         if (nextProgramSubString == "=>") {
           break;
         }
 
-        programSourceOutputStream << nextProgramSubString;
+        programSourceOutputStream << " " << nextProgramSubString;
       }
 
       std::string programSource = programSourceOutputStream.str();
+      std::cout << programSource << "\n";
+      std::cout << TryParseUnaryPrimitive(programSource) << "\n";
 
       // Parse expected program output.
       std::ostringstream expectedResultOutputStream;
@@ -212,31 +325,31 @@ int main(int argc, char *argv[]) {
 
       auto programAsm = EmitProgram(programSource);
 
-      std::string testId = "test-" + std::to_string(testCaseCounter);
-      std::ofstream programAsmOutputStream(testId + ".s");
+       std::string testId = "test-" + std::to_string(testCaseCounter);
+       std::ofstream programAsmOutputStream(testId + ".s");
 
-      if (!programAsmOutputStream.is_open()) {
+       if (!programAsmOutputStream.is_open()) {
         std::cerr << "Couldn't dumpt ASM to output file.";
         return 1;
       }
 
-      programAsmOutputStream << programAsm;
-      programAsmOutputStream.close();
+       programAsmOutputStream << programAsm;
+       programAsmOutputStream.close();
 
-      Exec(("clang /home/ergawy/repos/sil-compiler/runtime.c " + testId +
+       Exec(("clang /home/ergawy/repos/sil-compiler/runtime.c " + testId +
             ".s -o " + testId + ".out")
                .c_str());
-      auto actualResult = Exec(("./" + testId + ".out").c_str());
+       auto actualResult = Exec(("./" + testId + ".out").c_str());
 
-      std::cout << "[TEST " << testCaseCounter << "] ";
+       std::cout << "[TEST " << testCaseCounter << "] ";
 
-      if (actualResult == expectedResult) {
+       if (actualResult == expectedResult) {
         std::cout << "OK.\n";
       } else {
         std::cout << "FAILED\n";
       }
 
-      std::cout << "\t Expected: " << expectedResult << "\n"
+       std::cout << "\t Expected: " << expectedResult << "\n"
                 << "\t Actual  : " << actualResult << "\n";
 
       ++testCaseCounter;
