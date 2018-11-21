@@ -99,7 +99,7 @@ bool TryParseUnaryPrimitive(std::string expr,
     return false;
   }
 
-  static std::vector<std::string> unaryPrimitiveNames{"fxadd1"};
+  static std::vector<std::string> unaryPrimitiveNames{"fxadd1", "fxsub1"};
 
   std::string primitiveName = "";
   size_t idx;
@@ -182,17 +182,28 @@ int ImmediateRep(std::string token) {
 std::string EmitExpr(std::string expr);
 using TUnaryPrimitiveEmitter = std::string (*)(std::string);
 
-std::string EmitFxAdd1(std::string fxAdd1Arg) {
-  std::string argAsm = EmitExpr(fxAdd1Arg);
+std::string EmitFxAddImmediate(std::string fxAddArg,
+                               std::string fxAddImmediate) {
+  assert(IsImmediate(fxAddImmediate));
+  std::string argAsm = EmitExpr(fxAddArg);
 
   std::ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream 
       << argAsm 
-      << "    addl $" << ImmediateRep("1") << ", %eax\n";
+      << "    addl $" << ImmediateRep(fxAddImmediate) << ", %eax\n";
   // clang-format on 
 
   return exprEmissionStream.str();
+
+}
+
+std::string EmitFxAdd1(std::string fxAdd1Arg) {
+    return EmitFxAddImmediate(fxAdd1Arg, "1");
+}
+
+std::string EmitFxSub1(std::string fxSub1Arg) {
+    return EmitFxAddImmediate(fxSub1Arg, "-1");
 }
 
 std::string EmitExpr(std::string expr) {
@@ -213,7 +224,7 @@ std::string EmitExpr(std::string expr) {
 
   if (TryParseUnaryPrimitive(expr, &primitiveName, &arg)) {
     static std::unordered_map<std::string, TUnaryPrimitiveEmitter>
-        unaryEmitters{{"fxadd1", EmitFxAdd1}};
+        unaryEmitters{{"fxadd1", EmitFxAdd1}, {"fxsub1", EmitFxSub1}};
     return unaryEmitters[primitiveName](arg);
   }
 
@@ -325,31 +336,31 @@ int main(int argc, char *argv[]) {
 
       auto programAsm = EmitProgram(programSource);
 
-       std::string testId = "test-" + std::to_string(testCaseCounter);
-       std::ofstream programAsmOutputStream(testId + ".s");
+      std::string testId = "test-" + std::to_string(testCaseCounter);
+      std::ofstream programAsmOutputStream(testId + ".s");
 
-       if (!programAsmOutputStream.is_open()) {
+      if (!programAsmOutputStream.is_open()) {
         std::cerr << "Couldn't dumpt ASM to output file.";
         return 1;
       }
 
-       programAsmOutputStream << programAsm;
-       programAsmOutputStream.close();
+      programAsmOutputStream << programAsm;
+      programAsmOutputStream.close();
 
-       Exec(("clang /home/ergawy/repos/sil-compiler/runtime.c " + testId +
+      Exec(("clang /home/ergawy/repos/sil-compiler/runtime.c " + testId +
             ".s -o " + testId + ".out")
                .c_str());
-       auto actualResult = Exec(("./" + testId + ".out").c_str());
+      auto actualResult = Exec(("./" + testId + ".out").c_str());
 
-       std::cout << "[TEST " << testCaseCounter << "] ";
+      std::cout << "[TEST " << testCaseCounter << "] ";
 
-       if (actualResult == expectedResult) {
+      if (actualResult == expectedResult) {
         std::cout << "OK.\n";
       } else {
         std::cout << "FAILED\n";
       }
 
-       std::cout << "\t Expected: " << expectedResult << "\n"
+      std::cout << "\t Expected: " << expectedResult << "\n"
                 << "\t Actual  : " << actualResult << "\n";
 
       ++testCaseCounter;
