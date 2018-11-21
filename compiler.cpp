@@ -35,6 +35,9 @@ std::string EmitFxAddImmediate(std::string fxAddArg,
                                std::string fxAddImmediate);
 std::string EmitFxAdd1(std::string fxAdd1Arg);
 std::string EmitFxSub1(std::string fxSub1Arg);
+std::string EmitFixNumToChar(std::string fixNumToCharArg);
+std::string EmitCharToFixNum(std::string fixNumToCharArg);
+std::string EmitIsFixNum(std::string isFixNumArg);
 std::string EmitExpr(std::string expr);
 std::string EmitProgram(std::string programSource);
 
@@ -57,6 +60,7 @@ const unsigned int FxTag = 0x00;
 
 const unsigned int BoolF = 0x2F;
 const unsigned int BoolT = 0x6F;
+const unsigned int BoolBit = BoolF ^ BoolT;
 
 const unsigned int Null = 0x3F;
 
@@ -123,7 +127,8 @@ bool TryParseUnaryPrimitive(std::string expr, std::string *outPrimitiveName,
     return false;
   }
 
-  static std::vector<std::string> unaryPrimitiveNames{"fxadd1", "fxsub1"};
+  static std::vector<std::string> unaryPrimitiveNames{
+      "fxadd1", "fxsub1", "fixnum->char", "char->fixnum", "fixnum?"};
 
   std::string primitiveName = "";
   size_t idx;
@@ -227,6 +232,51 @@ std::string EmitFxSub1(std::string fxSub1Arg) {
     return EmitFxAddImmediate(fxSub1Arg, "-1");
 }
 
+std::string EmitFixNumToChar(std::string fixNumToCharArg) {
+  std::string argAsm = EmitExpr(fixNumToCharArg);
+
+  std::ostringstream exprEmissionStream;
+  // clang-format off
+  exprEmissionStream
+      << argAsm
+      << "    shll $" << (CharShift - FxShift) << ", %eax\n"
+      << "    orl $" << CharTag << ", %eax\n";
+  // clang-format on
+
+  return exprEmissionStream.str();
+}
+
+std::string EmitCharToFixNum(std::string charToFixNumArg) {
+  std::string argAsm = EmitExpr(charToFixNumArg);
+
+  std::ostringstream exprEmissionStream;
+  // clang-format off
+  exprEmissionStream
+      << argAsm
+      << "    shrl $" << (CharShift - FxShift) << ", %eax\n";
+  // clang-format on
+
+  return exprEmissionStream.str();
+}
+
+std::string EmitIsFixNum(std::string isFixNumArg) {
+  std::string argAsm = EmitExpr(isFixNumArg);
+
+  std::ostringstream exprEmissionStream;
+  // clang-format off
+  exprEmissionStream
+      << argAsm
+      << "    and $" << FxMask << ", %al\n"
+      << "    cmp $" << FxTag << ", %al\n"
+      << "    sete %al\n"
+      << "    movzbl %al, %eax\n"
+      << "    sal $" << BoolBit << ", %al\n"
+      << "    or $" << BoolF << ", %al\n";
+  // clang-format on
+
+  return exprEmissionStream.str();
+}
+
 std::string EmitExpr(std::string expr) {
   assert(IsExpr(expr));
 
@@ -245,7 +295,11 @@ std::string EmitExpr(std::string expr) {
 
   if (TryParseUnaryPrimitive(expr, &primitiveName, &arg)) {
     static std::unordered_map<std::string, TUnaryPrimitiveEmitter>
-        unaryEmitters{{"fxadd1", EmitFxAdd1}, {"fxsub1", EmitFxSub1}};
+        unaryEmitters{{"fxadd1", EmitFxAdd1},
+                      {"fxsub1", EmitFxSub1},
+                      {"fixnum->char", EmitFixNumToChar},
+                      {"char->fixnum", EmitCharToFixNum},
+                      {"fixnum?", EmitIsFixNum}};
     return unaryEmitters[primitiveName](arg);
   }
 
