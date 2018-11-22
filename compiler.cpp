@@ -40,8 +40,9 @@ std::string EmitCharToFixNum(std::string fixNumToCharArg);
 std::string EmitIsFixNum(std::string isFixNumArg);
 std::string EmitIsFxZero(std::string isFxZeroArg);
 std::string EmitIsNull(std::string isNullArg);
-std::string EmitIsBoolean(std::string isNullArg);
-std::string EmitIsChar(std::string isNullArg);
+std::string EmitIsBoolean(std::string isBooleanArg);
+std::string EmitIsChar(std::string isCharArg);
+std::string EmitNot(std::string notArg);
 std::string EmitProgram(std::string programSource);
 
 std::string Exec(const char *cmd) {
@@ -133,7 +134,7 @@ bool TryParseUnaryPrimitive(std::string expr, std::string *outPrimitiveName,
 
   static std::vector<std::string> unaryPrimitiveNames{
       "fxadd1",  "fxsub1",  "fixnum->char", "char->fixnum",
-      "fixnum?", "fxzero?", "null?", "boolean?", "char?"};
+      "fixnum?", "fxzero?", "null?", "boolean?", "char?", "not"};
 
   std::string primitiveName = "";
   size_t idx;
@@ -355,6 +356,23 @@ std::string EmitIsChar(std::string isCharArg) {
   return exprEmissionStream.str();
 }
 
+std::string EmitNot(std::string notArg) {
+  std::string argAsm = EmitExpr(notArg);
+
+  std::ostringstream exprEmissionStream;
+  // clang-format off
+  exprEmissionStream
+      << argAsm
+      << "    cmpl $" << BoolF << ", %eax\n"
+      << "    sete %al\n"
+      << "    movzbl %al, %eax\n"
+      << "    sal $" << BoolBit << ", %al\n"
+      << "    or $" << BoolF << ", %al\n";
+  // clang-format on
+
+  return exprEmissionStream.str();
+}
+
 std::string EmitExpr(std::string expr) {
   assert(IsExpr(expr));
 
@@ -381,7 +399,8 @@ std::string EmitExpr(std::string expr) {
                       {"fxzero?", EmitIsFxZero},
                       {"null?", EmitIsNull},
                       {"boolean?", EmitIsBoolean},
-                      {"char?", EmitIsChar}};
+                      {"char?", EmitIsChar},
+                      {"not", EmitNot}};
     return unaryEmitters[primitiveName](arg);
   }
 
