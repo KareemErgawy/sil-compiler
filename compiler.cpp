@@ -38,7 +38,10 @@ std::string EmitFxSub1(std::string fxSub1Arg);
 std::string EmitFixNumToChar(std::string fixNumToCharArg);
 std::string EmitCharToFixNum(std::string fixNumToCharArg);
 std::string EmitIsFixNum(std::string isFixNumArg);
-std::string EmitExpr(std::string expr);
+std::string EmitIsFxZero(std::string isFxZeroArg);
+std::string EmitIsNull(std::string isNullArg);
+std::string EmitIsBoolean(std::string isNullArg);
+std::string EmitIsChar(std::string isNullArg);
 std::string EmitProgram(std::string programSource);
 
 std::string Exec(const char *cmd) {
@@ -60,11 +63,12 @@ const unsigned int FxTag = 0x00;
 
 const unsigned int BoolF = 0x2F;
 const unsigned int BoolT = 0x6F;
-const unsigned int BoolBit = BoolF ^ BoolT;
+const unsigned int BoolBit = 6;
 
 const unsigned int Null = 0x3F;
 
 const unsigned int CharShift = 8;
+const unsigned int CharMask = 0xFF;
 const unsigned int CharTag = 0x0F;
 
 const unsigned int WordSize = 4;
@@ -128,7 +132,8 @@ bool TryParseUnaryPrimitive(std::string expr, std::string *outPrimitiveName,
   }
 
   static std::vector<std::string> unaryPrimitiveNames{
-      "fxadd1", "fxsub1", "fixnum->char", "char->fixnum", "fixnum?"};
+      "fxadd1",  "fxsub1",  "fixnum->char", "char->fixnum",
+      "fixnum?", "fxzero?", "null?", "boolean?", "char?"};
 
   std::string primitiveName = "";
   size_t idx;
@@ -277,6 +282,79 @@ std::string EmitIsFixNum(std::string isFixNumArg) {
   return exprEmissionStream.str();
 }
 
+std::string EmitIsFxZero(std::string isFxZeroArg) {
+  std::string argAsm = EmitExpr(isFxZeroArg);
+
+  std::ostringstream exprEmissionStream;
+  // clang-format off
+  exprEmissionStream
+      << argAsm
+      << "    cmpl $0, %eax\n"
+      << "    sete %al\n"
+      << "    movzbl %al, %eax\n"
+      << "    sal $" << BoolBit << ", %al\n"
+      << "    or $" << BoolF << ", %al\n";
+  // clang-format on
+
+  return exprEmissionStream.str();
+}
+
+std::string EmitIsNull(std::string isNullArg) {
+  std::string argAsm = EmitExpr(isNullArg);
+
+  std::ostringstream exprEmissionStream;
+  // clang-format off
+  exprEmissionStream
+      << argAsm
+      << "    cmpl $" << Null << ", %eax\n"
+      << "    sete %al\n"
+      << "    movzbl %al, %eax\n"
+      << "    sal $" << BoolBit << ", %al\n"
+      << "    or $" << BoolF << ", %al\n";
+  // clang-format on
+
+  return exprEmissionStream.str();
+}
+
+std::string EmitIsBoolean(std::string isBooleanArg) {
+  std::string argAsm = EmitExpr(isBooleanArg);
+
+  std::ostringstream exprEmissionStream;
+  // clang-format off
+  exprEmissionStream
+      << argAsm
+      << "    cmpl $" << BoolF << ", %eax\n"
+      << "    sete %bl\n"
+      << "    movzbl %bl, %ebx\n"
+      << "    cmpl $" << BoolT << ", %eax\n"
+      << "    sete %al\n"
+      << "    movzbl %al, %eax\n"
+      << "    or %bl, %al\n"
+      << "    sal $" << BoolBit << ", %al\n"
+      << "    or $" << BoolF << ", %al\n";
+  // clang-format on
+
+  return exprEmissionStream.str();
+}
+
+std::string EmitIsChar(std::string isCharArg) {
+  std::string argAsm = EmitExpr(isCharArg);
+
+  std::ostringstream exprEmissionStream;
+  // clang-format off
+  exprEmissionStream
+      << argAsm
+      << "    and $" << CharMask << ", %al\n"
+      << "    cmp $" << CharTag << ", %al\n"
+      << "    sete %al\n"
+      << "    movzbl %al, %eax\n"
+      << "    sal $" << BoolBit << ", %al\n"
+      << "    or $" << BoolF << ", %al\n";
+  // clang-format on
+
+  return exprEmissionStream.str();
+}
+
 std::string EmitExpr(std::string expr) {
   assert(IsExpr(expr));
 
@@ -299,7 +377,11 @@ std::string EmitExpr(std::string expr) {
                       {"fxsub1", EmitFxSub1},
                       {"fixnum->char", EmitFixNumToChar},
                       {"char->fixnum", EmitCharToFixNum},
-                      {"fixnum?", EmitIsFixNum}};
+                      {"fixnum?", EmitIsFixNum},
+                      {"fxzero?", EmitIsFxZero},
+                      {"null?", EmitIsNull},
+                      {"boolean?", EmitIsBoolean},
+                      {"char?", EmitIsChar}};
     return unaryEmitters[primitiveName](arg);
   }
 
@@ -328,6 +410,7 @@ int main(int argc, char *argv[]) {
       "/home/ergawy/repos/inc-compiler/src/tests-1.3-req.scm"};
 
   int testCaseCounter = 1;
+  int failedTestCaseCounter = 0;
 
   for (const auto &tfp : testFilePaths) {
     std::ifstream testFile(tfp);
@@ -386,8 +469,6 @@ int main(int argc, char *argv[]) {
       }
 
       std::string programSource = programSourceOutputStream.str();
-      std::cout << programSource << "\n";
-      std::cout << TryParseUnaryPrimitive(programSource) << "\n";
 
       // Parse expected program output.
       std::ostringstream expectedResultOutputStream;
@@ -427,19 +508,27 @@ int main(int argc, char *argv[]) {
                .c_str());
       auto actualResult = Exec(("./" + testId + ".out").c_str());
 
-      std::cout << "[TEST " << testCaseCounter << "] ";
-
-      if (actualResult == expectedResult) {
-        std::cout << "OK.\n";
-      } else {
-        std::cout << "FAILED\n";
-      }
+      std::cout << "[TEST " << testCaseCounter << "]\n";
+      std::cout << programSource << "\n";
 
       std::cout << "\t Expected: " << expectedResult << "\n"
                 << "\t Actual  : " << actualResult << "\n";
 
+      if (actualResult == expectedResult) {
+        std::cout << "\033[1;32mOK\033[0m\n\n";
+      } else {
+        std::cout << "\033[1;31mFAILED\033[0m\n\n";
+        ++failedTestCaseCounter;
+      }
+
       ++testCaseCounter;
     }
   }
+
+  if (failedTestCaseCounter > 0) {
+    std::cout << "\n\033[1;31mFailed/Total: " << failedTestCaseCounter << "/"
+              << testCaseCounter << "\033[0m\n";
+  }
+
   return 0;
 }
