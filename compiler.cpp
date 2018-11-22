@@ -43,6 +43,7 @@ std::string EmitIsNull(std::string isNullArg);
 std::string EmitIsBoolean(std::string isBooleanArg);
 std::string EmitIsChar(std::string isCharArg);
 std::string EmitNot(std::string notArg);
+std::string EmitFxLogNot(std::string fxLogNotArg);
 std::string EmitProgram(std::string programSource);
 
 std::string Exec(const char *cmd) {
@@ -60,6 +61,7 @@ std::string Exec(const char *cmd) {
 
 const unsigned int FxShift = 2;
 const unsigned int FxMask = 0x03;
+const unsigned int FxMaskNeg = 0xFFFFFFFC;
 const unsigned int FxTag = 0x00;
 
 const unsigned int BoolF = 0x2F;
@@ -134,7 +136,7 @@ bool TryParseUnaryPrimitive(std::string expr, std::string *outPrimitiveName,
 
   static std::vector<std::string> unaryPrimitiveNames{
       "fxadd1",  "fxsub1",  "fixnum->char", "char->fixnum",
-      "fixnum?", "fxzero?", "null?", "boolean?", "char?", "not"};
+      "fixnum?", "fxzero?", "null?", "boolean?", "char?", "not", "fxlognot"};
 
   std::string primitiveName = "";
   size_t idx;
@@ -373,6 +375,19 @@ std::string EmitNot(std::string notArg) {
   return exprEmissionStream.str();
 }
 
+std::string EmitFxLogNot(std::string fxLogNotArg) {
+  std::string argAsm = EmitExpr(fxLogNotArg);
+
+  std::ostringstream exprEmissionStream;
+  // clang-format off
+  exprEmissionStream
+      << argAsm
+      << "    xor $" << FxMaskNeg << ", %eax\n";
+  // clang-format on
+
+  return exprEmissionStream.str();
+}
+
 std::string EmitExpr(std::string expr) {
   assert(IsExpr(expr));
 
@@ -400,7 +415,8 @@ std::string EmitExpr(std::string expr) {
                       {"null?", EmitIsNull},
                       {"boolean?", EmitIsBoolean},
                       {"char?", EmitIsChar},
-                      {"not", EmitNot}};
+                      {"not", EmitNot},
+                      {"fxlognot", EmitFxLogNot}};
     return unaryEmitters[primitiveName](arg);
   }
 
