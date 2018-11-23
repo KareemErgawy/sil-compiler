@@ -18,19 +18,21 @@ bool IsBool(std::string token);
 bool IsNull(std::string token);
 bool IsChar(std::string token);
 bool IsImmediate(std::string token);
-
-bool IsExpr(std::string expr);
-bool IsImmediate(std::string token);
 bool TryParseUnaryPrimitive(std::string expr,
                             std::string *outPrimitiveName = nullptr,
                             std::string *outArg = nullptr);
+bool TryParseSubExpr(std::string expr, size_t subExprStart,
+                     std::string *subExpr = nullptr,
+                     size_t *subExprEnd = nullptr);
+bool TryParseIfExpr(std::string expr, std::string *outCond = nullptr,
+                    std::string *outConseq = nullptr,
+                    std::string *outAlt = nullptr);
 bool IsExpr(std::string expr);
 
 char TokenToChar(std::string token);
 int ImmediateRep(std::string token);
 
 using TUnaryPrimitiveEmitter = std::string (*)(std::string);
-std::string EmitExpr(std::string expr);
 std::string EmitFxAddImmediate(std::string fxAddArg,
                                std::string fxAddImmediate);
 std::string EmitFxAdd1(std::string fxAdd1Arg);
@@ -44,6 +46,14 @@ std::string EmitIsBoolean(std::string isBooleanArg);
 std::string EmitIsChar(std::string isCharArg);
 std::string EmitNot(std::string notArg);
 std::string EmitFxLogNot(std::string fxLogNotArg);
+std::string EmitIfExpr(std::string cond, std::string conseq, std::string alt);
+std::string EmitExpr(std::string expr);
+
+std::string UniqueLabel() {
+  static unsigned int count = 0;
+  return "L_" + std::to_string(count++);
+}
+
 std::string EmitProgram(std::string programSource);
 
 std::string Exec(const char *cmd) {
@@ -136,7 +146,8 @@ bool TryParseUnaryPrimitive(std::string expr, std::string *outPrimitiveName,
 
   static std::vector<std::string> unaryPrimitiveNames{
       "fxadd1",  "fxsub1",  "fixnum->char", "char->fixnum",
-      "fixnum?", "fxzero?", "null?", "boolean?", "char?", "not", "fxlognot"};
+      "fixnum?", "fxzero?", "null?",        "boolean?",
+      "char?",   "not",     "fxlognot"};
 
   std::string primitiveName = "";
   size_t idx;
@@ -171,8 +182,108 @@ bool TryParseUnaryPrimitive(std::string expr, std::string *outPrimitiveName,
   return IsExpr(arg);
 }
 
+bool TryParseSubExpr(std::string expr, size_t subExprStart,
+                     std::string *outSubExpr, size_t *outSubExprEnd) {
+  // The (- 1) accounts for the closing ) of expr.
+  assert(subExprStart < expr.size() - 1);
+
+  size_t idx = subExprStart;
+  std::string subExpr;
+
+  if (expr[idx] != '(') {
+    // Immediate.
+    for (; idx < (expr.size() - 1) && !isspace(expr[idx]); ++idx) {
+    }
+  } else {
+    // Parenthesized expression.
+    int numOpenParen = 1;
+    ++idx;
+
+    for (; idx < (expr.size() - 1) && numOpenParen > 0; ++idx) {
+      if (expr[idx] == '(') {
+        ++numOpenParen;
+      }
+
+      if (expr[idx] == ')') {
+        --numOpenParen;
+      }
+    }
+  }
+
+  subExpr = expr.substr(subExprStart, idx - subExprStart);
+
+  if (outSubExpr != nullptr) {
+    *outSubExpr = expr.substr(subExprStart, idx - subExprStart);
+  }
+
+  if (outSubExprEnd != nullptr) {
+    *outSubExprEnd = idx;
+  }
+
+  return IsExpr(subExpr);
+}
+
+bool TryParseIfExpr(std::string expr, std::string *outCond,
+                    std::string *outConseq, std::string *outAlt) {
+  if (expr.size() < 4) {
+    return false;
+  }
+
+  if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+    return false;
+  }
+
+  if (expr[1] != 'i' || expr[2] != 'f') {
+    return false;
+  }
+
+  size_t idx = 3;
+
+  auto skipSpaceAndCheckIfEndOfExpr = [&]() {
+    assert(idx < expr.size());
+    if (!isspace(expr[idx])) {
+      return false;
+    }
+
+    for (; idx < (expr.size() - 1) && std::isspace(expr[idx]); ++idx) {
+    }
+
+    return (idx == (expr.size() - 1));
+  };
+
+  if (skipSpaceAndCheckIfEndOfExpr()) {
+    return false;
+  }
+
+  // Condition.
+  if (!TryParseSubExpr(expr, idx, outCond, &idx)) {
+    return false;
+  }
+
+  if (skipSpaceAndCheckIfEndOfExpr()) {
+    return false;
+  }
+
+  // Consequence path.
+  if (!TryParseSubExpr(expr, idx, outConseq, &idx)) {
+    return false;
+  }
+
+  if (skipSpaceAndCheckIfEndOfExpr()) {
+    return false;
+  }
+
+  // Alternative path.
+  if (!TryParseSubExpr(expr, idx, outAlt, &idx)) {
+    return false;
+  }
+
+  return idx == (expr.size() - 1);
+}
+
 bool IsExpr(std::string expr) {
-  return IsImmediate(expr) || TryParseUnaryPrimitive(expr);
+  return IsImmediate(expr) || TryParseUnaryPrimitive(expr) ||
+         TryParseIfExpr(expr);
 }
 
 char TokenToChar(std::string token) {
@@ -388,6 +499,26 @@ std::string EmitFxLogNot(std::string fxLogNotArg) {
   return exprEmissionStream.str();
 }
 
+std::string EmitIfExpr(std::string cond, std::string conseq, std::string alt) {
+  std::string altLabel = UniqueLabel();
+  std::string endLabel = UniqueLabel();
+
+  std::ostringstream exprEmissionStream;
+  // clang-format off
+  exprEmissionStream
+      << EmitExpr(cond)
+      << "    cmp $" << BoolF << ", %al\n"
+      << "    je " << altLabel << "\n"
+      << EmitExpr(conseq)
+      << "    jmp " << endLabel << "\n"
+      << altLabel << ":\n"
+      << EmitExpr(alt)
+      << endLabel << ":\n";
+  // clang-format on
+
+  return exprEmissionStream.str();
+}
+
 std::string EmitExpr(std::string expr) {
   assert(IsExpr(expr));
 
@@ -420,6 +551,14 @@ std::string EmitExpr(std::string expr) {
     return unaryEmitters[primitiveName](arg);
   }
 
+  std::string cond;
+  std::string conseq;
+  std::string alt;
+
+  if (TryParseIfExpr(expr, &cond, &conseq, &alt)) {
+    return EmitIfExpr(cond, conseq, alt);
+  }
+
   assert(false);
 }
 
@@ -442,7 +581,8 @@ int main(int argc, char *argv[]) {
   std::vector<std::string> testFilePaths{
       "/home/ergawy/repos/inc-compiler/src/tests-1.1-req.scm",
       "/home/ergawy/repos/inc-compiler/src/tests-1.2-req.scm",
-      "/home/ergawy/repos/inc-compiler/src/tests-1.3-req.scm"};
+      "/home/ergawy/repos/inc-compiler/src/tests-1.3-req.scm",
+      "/home/ergawy/repos/inc-compiler/src/tests-1.4-req.scm"};
 
   int testCaseCounter = 1;
   int failedTestCaseCounter = 0;
@@ -525,31 +665,31 @@ int main(int argc, char *argv[]) {
       std::string expectedResult = expectedResultOutputStream.str();
       expectedResult = expectedResult.substr(1, expectedResult.size() - 4);
 
-      auto programAsm = EmitProgram(programSource);
+       auto programAsm = EmitProgram(programSource);
 
-      std::string testId = "test-" + std::to_string(testCaseCounter);
-      std::ofstream programAsmOutputStream(testId + ".s");
+       std::string testId = "test-" + std::to_string(testCaseCounter);
+       std::ofstream programAsmOutputStream(testId + ".s");
 
-      if (!programAsmOutputStream.is_open()) {
+       if (!programAsmOutputStream.is_open()) {
         std::cerr << "Couldn't dumpt ASM to output file.";
         return 1;
       }
 
-      programAsmOutputStream << programAsm;
-      programAsmOutputStream.close();
+       programAsmOutputStream << programAsm;
+       programAsmOutputStream.close();
 
-      Exec(("clang /home/ergawy/repos/sil-compiler/runtime.c " + testId +
+       Exec(("clang /home/ergawy/repos/sil-compiler/runtime.c " + testId +
             ".s -o " + testId + ".out")
                .c_str());
-      auto actualResult = Exec(("./" + testId + ".out").c_str());
+       auto actualResult = Exec(("./" + testId + ".out").c_str());
 
-      std::cout << "[TEST " << testCaseCounter << "]\n";
-      std::cout << programSource << "\n";
+       std::cout << "[TEST " << testCaseCounter << "]\n";
+       std::cout << programSource << "\n";
 
-      std::cout << "\t Expected: " << expectedResult << "\n"
+       std::cout << "\t Expected: " << expectedResult << "\n"
                 << "\t Actual  : " << actualResult << "\n";
 
-      if (actualResult == expectedResult) {
+       if (actualResult == expectedResult) {
         std::cout << "\033[1;32mOK\033[0m\n\n";
       } else {
         std::cout << "\033[1;31mFAILED\033[0m\n\n";
