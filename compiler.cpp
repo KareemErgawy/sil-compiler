@@ -330,12 +330,11 @@ int ImmediateRep(std::string token) {
 std::string EmitFxAddImmediate(std::string fxAddArg,
                                std::string fxAddImmediate) {
   assert(IsImmediate(fxAddImmediate));
-  std::string argAsm = EmitExpr(fxAddArg);
 
   std::ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream 
-      << argAsm 
+      << EmitExpr(fxAddArg)
       << "    addl $" << ImmediateRep(fxAddImmediate) << ", %eax\n";
   // clang-format on 
 
@@ -352,12 +351,10 @@ std::string EmitFxSub1(std::string fxSub1Arg) {
 }
 
 std::string EmitFixNumToChar(std::string fixNumToCharArg) {
-  std::string argAsm = EmitExpr(fixNumToCharArg);
-
   std::ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream
-      << argAsm
+      << EmitExpr(fixNumToCharArg)
       << "    shll $" << (CharShift - FxShift) << ", %eax\n"
       << "    orl $" << CharTag << ", %eax\n";
   // clang-format on
@@ -366,12 +363,10 @@ std::string EmitFixNumToChar(std::string fixNumToCharArg) {
 }
 
 std::string EmitCharToFixNum(std::string charToFixNumArg) {
-  std::string argAsm = EmitExpr(charToFixNumArg);
-
   std::ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream
-      << argAsm
+      << EmitExpr(charToFixNumArg)
       << "    shrl $" << (CharShift - FxShift) << ", %eax\n";
   // clang-format on
 
@@ -379,12 +374,10 @@ std::string EmitCharToFixNum(std::string charToFixNumArg) {
 }
 
 std::string EmitIsFixNum(std::string isFixNumArg) {
-  std::string argAsm = EmitExpr(isFixNumArg);
-
   std::ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream
-      << argAsm
+      << EmitExpr(isFixNumArg)
       << "    and $" << FxMask << ", %al\n"
       << "    cmp $" << FxTag << ", %al\n"
       << "    sete %al\n"
@@ -397,12 +390,10 @@ std::string EmitIsFixNum(std::string isFixNumArg) {
 }
 
 std::string EmitIsFxZero(std::string isFxZeroArg) {
-  std::string argAsm = EmitExpr(isFxZeroArg);
-
   std::ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream
-      << argAsm
+      << EmitExpr(isFxZeroArg)
       << "    cmpl $0, %eax\n"
       << "    sete %al\n"
       << "    movzbl %al, %eax\n"
@@ -414,12 +405,10 @@ std::string EmitIsFxZero(std::string isFxZeroArg) {
 }
 
 std::string EmitIsNull(std::string isNullArg) {
-  std::string argAsm = EmitExpr(isNullArg);
-
   std::ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream
-      << argAsm
+      << EmitExpr(isNullArg)
       << "    cmpl $" << Null << ", %eax\n"
       << "    sete %al\n"
       << "    movzbl %al, %eax\n"
@@ -431,12 +420,10 @@ std::string EmitIsNull(std::string isNullArg) {
 }
 
 std::string EmitIsBoolean(std::string isBooleanArg) {
-  std::string argAsm = EmitExpr(isBooleanArg);
-
   std::ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream
-      << argAsm
+      << EmitExpr(isBooleanArg)
       << "    cmpl $" << BoolF << ", %eax\n"
       << "    sete %bl\n"
       << "    movzbl %bl, %ebx\n"
@@ -452,12 +439,10 @@ std::string EmitIsBoolean(std::string isBooleanArg) {
 }
 
 std::string EmitIsChar(std::string isCharArg) {
-  std::string argAsm = EmitExpr(isCharArg);
-
   std::ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream
-      << argAsm
+      << EmitExpr(isCharArg)
       << "    and $" << CharMask << ", %al\n"
       << "    cmp $" << CharTag << ", %al\n"
       << "    sete %al\n"
@@ -470,12 +455,10 @@ std::string EmitIsChar(std::string isCharArg) {
 }
 
 std::string EmitNot(std::string notArg) {
-  std::string argAsm = EmitExpr(notArg);
-
   std::ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream
-      << argAsm
+      << EmitExpr(notArg)
       << "    cmpl $" << BoolF << ", %eax\n"
       << "    sete %al\n"
       << "    movzbl %al, %eax\n"
@@ -487,12 +470,10 @@ std::string EmitNot(std::string notArg) {
 }
 
 std::string EmitFxLogNot(std::string fxLogNotArg) {
-  std::string argAsm = EmitExpr(fxLogNotArg);
-
   std::ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream
-      << argAsm
+      << EmitExpr(fxLogNotArg)
       << "    xor $" << FxMaskNeg << ", %eax\n";
   // clang-format on
 
@@ -665,31 +646,31 @@ int main(int argc, char *argv[]) {
       std::string expectedResult = expectedResultOutputStream.str();
       expectedResult = expectedResult.substr(1, expectedResult.size() - 4);
 
-       auto programAsm = EmitProgram(programSource);
+      auto programAsm = EmitProgram(programSource);
 
-       std::string testId = "test-" + std::to_string(testCaseCounter);
-       std::ofstream programAsmOutputStream(testId + ".s");
+      std::string testId = "test-" + std::to_string(testCaseCounter);
+      std::ofstream programAsmOutputStream(testId + ".s");
 
-       if (!programAsmOutputStream.is_open()) {
+      if (!programAsmOutputStream.is_open()) {
         std::cerr << "Couldn't dumpt ASM to output file.";
         return 1;
       }
 
-       programAsmOutputStream << programAsm;
-       programAsmOutputStream.close();
+      programAsmOutputStream << programAsm;
+      programAsmOutputStream.close();
 
-       Exec(("clang /home/ergawy/repos/sil-compiler/runtime.c " + testId +
+      Exec(("clang /home/ergawy/repos/sil-compiler/runtime.c " + testId +
             ".s -o " + testId + ".out")
                .c_str());
-       auto actualResult = Exec(("./" + testId + ".out").c_str());
+      auto actualResult = Exec(("./" + testId + ".out").c_str());
 
-       std::cout << "[TEST " << testCaseCounter << "]\n";
-       std::cout << programSource << "\n";
+      std::cout << "[TEST " << testCaseCounter << "]\n";
+      std::cout << programSource << "\n";
 
-       std::cout << "\t Expected: " << expectedResult << "\n"
+      std::cout << "\t Expected: " << expectedResult << "\n"
                 << "\t Actual  : " << actualResult << "\n";
 
-       if (actualResult == expectedResult) {
+      if (actualResult == expectedResult) {
         std::cout << "\033[1;32mOK\033[0m\n\n";
       } else {
         std::cout << "\033[1;31mFAILED\033[0m\n\n";
