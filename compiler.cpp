@@ -60,7 +60,8 @@ std::string EmitIsBoolean(int stackIdx, std::string isBooleanArg);
 std::string EmitIsChar(int stackIdx, std::string isCharArg);
 std::string EmitNot(int stackIdx, std::string notArg);
 std::string EmitFxLogNot(int stackIdx, std::string fxLogNotArg);
-std::string EmitFxPlus(int stackIdx, std::string lhs, std::string rhs);
+std::string EmitFxAdd(int stackIdx, std::string lhs, std::string rhs);
+std::string EmitFxSub(int stackIdx, std::string lhs, std::string rhs);
 std::string EmitIfExpr(int stackIdx, std::string cond, std::string conseq,
                        std::string alt);
 std::string EmitAndExpr(int stackIdx, const std::vector<std::string> &andArgs);
@@ -211,7 +212,7 @@ bool TryParseBinaryPrimitive(std::string expr, std::string *outPrimitiveName,
     return false;
   }
 
-  static std::vector<std::string> binaryPrimitiveNames{"fx+"};
+  static std::vector<std::string> binaryPrimitiveNames{"fx+", "fx-"};
 
   std::string primitiveName = "";
   size_t idx;
@@ -555,7 +556,7 @@ std::string EmitFxLogNot(int stackIdx, std::string fxLogNotArg) {
   return exprEmissionStream.str();
 }
 
-std::string EmitFxPlus(int stackIdx, std::string lhs, std::string rhs) {
+std::string EmitFxAdd(int stackIdx, std::string lhs, std::string rhs) {
   std::ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream
@@ -563,6 +564,19 @@ std::string EmitFxPlus(int stackIdx, std::string lhs, std::string rhs) {
       << "    movl %eax, " << stackIdx << "(%rsp)\n"
       << EmitExpr(stackIdx - WordSize, rhs)
       << "    addl " << stackIdx << "(%rsp), %eax\n";
+  // clang-format on
+
+  return exprEmissionStream.str();
+}
+
+std::string EmitFxSub(int stackIdx, std::string lhs, std::string rhs) {
+  std::ostringstream exprEmissionStream;
+  // clang-format off
+  exprEmissionStream
+      << EmitExpr(stackIdx, rhs)
+      << "    movl %eax, " << stackIdx << "(%rsp)\n"
+      << EmitExpr(stackIdx - WordSize, lhs)
+      << "    subl " << stackIdx << "(%rsp), %eax\n";
   // clang-format on
 
   return exprEmissionStream.str();
@@ -662,7 +676,7 @@ std::string EmitExpr(int stackIdx, std::string expr) {
   if (TryParseBinaryPrimitive(expr, &primitiveName, &args)) {
     assert(args.size() == 2);
     static std::unordered_map<std::string, TBinaryPrimitiveEmitter>
-        binaryEmitters{{"fx+", EmitFxPlus}};
+        binaryEmitters{{"fx+", EmitFxAdd}, {"fx-", EmitFxSub}};
     return binaryEmitters[primitiveName](stackIdx, args[0], args[1]);
   }
 
