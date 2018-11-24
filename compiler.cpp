@@ -11,6 +11,9 @@
 #include <utility>
 #include <vector>
 
+// TODO Reduce code repetition on parsing functions: TryParseUnaryPrimitive,
+// TryParseBinaryPrimitive, TryParseIfExpr, TryParseAndExpr, TryParseOrExpr.
+
 std::string Exec(const char *cmd);
 
 bool IsFixNum(std::string token);
@@ -21,12 +24,17 @@ bool IsImmediate(std::string token);
 bool TryParseUnaryPrimitive(std::string expr,
                             std::string *outPrimitiveName = nullptr,
                             std::string *outArg = nullptr);
+bool TryParseBinaryPrimitive(std::string expr,
+                             std::string *outPrimitiveName = nullptr,
+                             std::vector<std::string> *outArgs = nullptr);
 bool TryParseSubExpr(std::string expr, size_t subExprStart,
                      std::string *subExpr = nullptr,
                      size_t *subExprEnd = nullptr);
-bool TryParseIfExpr(std::string expr, std::string *outCond = nullptr,
-                    std::string *outConseq = nullptr,
-                    std::string *outAlt = nullptr);
+bool TryParseVariableNumOfSubExpr(std::string expr, size_t startIdx,
+                                  std::vector<std::string> *outSubExprs,
+                                  int expectedNumSubExprs = -1);
+bool TryParseIfExpr(std::string expr,
+                    std::vector<std::string> *outIfParts = nullptr);
 bool TryParseAndExpr(std::string expr,
                      std::vector<std::string> *outAndArgs = nullptr);
 bool TryParseOrExpr(std::string expr,
@@ -36,23 +44,27 @@ bool IsExpr(std::string expr);
 char TokenToChar(std::string token);
 int ImmediateRep(std::string token);
 
-using TUnaryPrimitiveEmitter = std::string (*)(std::string);
-std::string EmitFxAddImmediate(std::string fxAddArg,
+using TUnaryPrimitiveEmitter = std::string (*)(int, std::string);
+using TBinaryPrimitiveEmitter = std::string (*)(int, std::string, std::string);
+
+std::string EmitFxAddImmediate(int stackIdx, std::string fxAddArg,
                                std::string fxAddImmediate);
-std::string EmitFxAdd1(std::string fxAdd1Arg);
-std::string EmitFxSub1(std::string fxSub1Arg);
-std::string EmitFixNumToChar(std::string fixNumToCharArg);
-std::string EmitCharToFixNum(std::string fixNumToCharArg);
-std::string EmitIsFixNum(std::string isFixNumArg);
-std::string EmitIsFxZero(std::string isFxZeroArg);
-std::string EmitIsNull(std::string isNullArg);
-std::string EmitIsBoolean(std::string isBooleanArg);
-std::string EmitIsChar(std::string isCharArg);
-std::string EmitNot(std::string notArg);
-std::string EmitFxLogNot(std::string fxLogNotArg);
-std::string EmitIfExpr(std::string cond, std::string conseq, std::string alt);
-std::string EmitAndExpr(const std::vector<std::string> &andArgs);
-std::string EmitExpr(std::string expr);
+std::string EmitFxAdd1(int stackIdx, std::string fxAdd1Arg);
+std::string EmitFxSub1(int stackIdx, std::string fxSub1Arg);
+std::string EmitFixNumToChar(int stackIdx, std::string fixNumToCharArg);
+std::string EmitCharToFixNum(int stackIdx, std::string fixNumToCharArg);
+std::string EmitIsFixNum(int stackIdx, std::string isFixNumArg);
+std::string EmitIsFxZero(int stackIdx, std::string isFxZeroArg);
+std::string EmitIsNull(int stackIdx, std::string isNullArg);
+std::string EmitIsBoolean(int stackIdx, std::string isBooleanArg);
+std::string EmitIsChar(int stackIdx, std::string isCharArg);
+std::string EmitNot(int stackIdx, std::string notArg);
+std::string EmitFxLogNot(int stackIdx, std::string fxLogNotArg);
+std::string EmitFxPlus(int stackIdx, std::string lhs, std::string rhs);
+std::string EmitIfExpr(int stackIdx, std::string cond, std::string conseq,
+                       std::string alt);
+std::string EmitAndExpr(int stackIdx, const std::vector<std::string> &andArgs);
+std::string EmitExpr(int stackIdx, std::string expr);
 
 std::string UniqueLabel() {
   static unsigned int count = 0;
@@ -189,6 +201,37 @@ bool TryParseUnaryPrimitive(std::string expr, std::string *outPrimitiveName,
   return IsExpr(arg);
 }
 
+bool TryParseBinaryPrimitive(std::string expr, std::string *outPrimitiveName,
+                             std::vector<std::string> *outArgs) {
+  if (expr.size() < 3) {
+    return false;
+  }
+
+  if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+    return false;
+  }
+
+  static std::vector<std::string> binaryPrimitiveNames{"fx+"};
+
+  std::string primitiveName = "";
+  size_t idx;
+
+  for (idx = 1; idx < (expr.size() - 1) && !std::isspace(expr[idx]); ++idx) {
+    primitiveName = primitiveName + expr[idx];
+  }
+
+  if (std::find(binaryPrimitiveNames.begin(), binaryPrimitiveNames.end(),
+                primitiveName) == binaryPrimitiveNames.end()) {
+    return false;
+  }
+
+  if (outPrimitiveName != nullptr) {
+    *outPrimitiveName = primitiveName;
+  }
+
+  return TryParseVariableNumOfSubExpr(expr, idx, outArgs, 2);
+}
+
 bool TryParseSubExpr(std::string expr, size_t subExprStart,
                      std::string *outSubExpr, size_t *outSubExprEnd) {
   // The (- 1) accounts for the closing ) of expr.
@@ -239,44 +282,15 @@ bool skipSpaceAndCheckIfEndOfExpr(std::string expr, size_t *idx) {
   return (*idx == (expr.size() - 1));
 }
 
-bool TryParseIfExpr(std::string expr, std::string *outCond,
-                    std::string *outConseq, std::string *outAlt) {
-  if (expr.size() < 4) {
-    return false;
-  }
-
-  if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
-    return false;
-  }
-
-  if (expr[1] != 'i' || expr[2] != 'f') {
-    return false;
-  }
-
-  size_t idx = 3;
-
-  std::string *outPtrs[]{outCond, outConseq, outAlt};
-
-  for (int i = 0; i < 3; ++i) {
-    if (skipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
-      return false;
-    }
-
-    if (!TryParseSubExpr(expr, idx, outPtrs[i], &idx)) {
-      return false;
-    }
-  }
-
-  return idx == (expr.size() - 1);
-}
-
 bool TryParseVariableNumOfSubExpr(std::string expr, size_t startIdx,
-                                  std::vector<std::string> *outSubExprs) {
+                                  std::vector<std::string> *outSubExprs,
+                                  int expectedNumSubExprs) {
   if (outSubExprs != nullptr) {
     outSubExprs->clear();
   }
 
   size_t idx = startIdx;
+  int numSubExprs = 0;
 
   while (!skipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
     std::string *argPtr = nullptr;
@@ -289,9 +303,27 @@ bool TryParseVariableNumOfSubExpr(std::string expr, size_t startIdx,
     if (!TryParseSubExpr(expr, idx, argPtr, &idx)) {
       return false;
     }
+
+    ++numSubExprs;
   }
 
-  return true;
+  return (expectedNumSubExprs == -1) || (expectedNumSubExprs == numSubExprs);
+}
+
+bool TryParseIfExpr(std::string expr, std::vector<std::string> *outIfParts) {
+  if (expr.size() < 4) {
+    return false;
+  }
+
+  if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+    return false;
+  }
+
+  if (expr[1] != 'i' || expr[2] != 'f') {
+    return false;
+  }
+
+  return TryParseVariableNumOfSubExpr(expr, 3, outIfParts, 3);
 }
 
 bool TryParseAndExpr(std::string expr, std::vector<std::string> *outAndArgs) {
@@ -328,7 +360,8 @@ bool TryParseOrExpr(std::string expr, std::vector<std::string> *outOrArgs) {
 
 bool IsExpr(std::string expr) {
   return IsImmediate(expr) || TryParseUnaryPrimitive(expr) ||
-         TryParseIfExpr(expr) || TryParseAndExpr(expr) || TryParseOrExpr(expr);
+         TryParseBinaryPrimitive(expr) || TryParseIfExpr(expr) ||
+         TryParseAndExpr(expr) || TryParseOrExpr(expr);
 }
 
 char TokenToChar(std::string token) {
@@ -372,14 +405,14 @@ int ImmediateRep(std::string token) {
   return (std::stoi(token) << FxShift) | FxTag;
 }
 
-std::string EmitFxAddImmediate(std::string fxAddArg,
+std::string EmitFxAddImmediate(int stackIdx, std::string fxAddArg,
                                std::string fxAddImmediate) {
   assert(IsImmediate(fxAddImmediate));
 
   std::ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream 
-      << EmitExpr(fxAddArg)
+      << EmitExpr(stackIdx, fxAddArg)
       << "    addl $" << ImmediateRep(fxAddImmediate) << ", %eax\n";
   // clang-format on 
 
@@ -387,19 +420,19 @@ std::string EmitFxAddImmediate(std::string fxAddArg,
 
 }
 
-std::string EmitFxAdd1(std::string fxAdd1Arg) {
-    return EmitFxAddImmediate(fxAdd1Arg, "1");
+std::string EmitFxAdd1(int stackIdx, std::string fxAdd1Arg) {
+    return EmitFxAddImmediate(stackIdx, fxAdd1Arg, "1");
 }
 
-std::string EmitFxSub1(std::string fxSub1Arg) {
-    return EmitFxAddImmediate(fxSub1Arg, "-1");
+std::string EmitFxSub1(int stackIdx, std::string fxSub1Arg) {
+    return EmitFxAddImmediate(stackIdx, fxSub1Arg, "-1");
 }
 
-std::string EmitFixNumToChar(std::string fixNumToCharArg) {
+std::string EmitFixNumToChar(int stackIdx, std::string fixNumToCharArg) {
   std::ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream
-      << EmitExpr(fixNumToCharArg)
+      << EmitExpr(stackIdx, fixNumToCharArg)
       << "    shll $" << (CharShift - FxShift) << ", %eax\n"
       << "    orl $" << CharTag << ", %eax\n";
   // clang-format on
@@ -407,22 +440,22 @@ std::string EmitFixNumToChar(std::string fixNumToCharArg) {
   return exprEmissionStream.str();
 }
 
-std::string EmitCharToFixNum(std::string charToFixNumArg) {
+std::string EmitCharToFixNum(int stackIdx, std::string charToFixNumArg) {
   std::ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream
-      << EmitExpr(charToFixNumArg)
+      << EmitExpr(stackIdx, charToFixNumArg)
       << "    shrl $" << (CharShift - FxShift) << ", %eax\n";
   // clang-format on
 
   return exprEmissionStream.str();
 }
 
-std::string EmitIsFixNum(std::string isFixNumArg) {
+std::string EmitIsFixNum(int stackIdx, std::string isFixNumArg) {
   std::ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream
-      << EmitExpr(isFixNumArg)
+      << EmitExpr(stackIdx, isFixNumArg)
       << "    and $" << FxMask << ", %al\n"
       << "    cmp $" << FxTag << ", %al\n"
       << "    sete %al\n"
@@ -434,11 +467,11 @@ std::string EmitIsFixNum(std::string isFixNumArg) {
   return exprEmissionStream.str();
 }
 
-std::string EmitIsFxZero(std::string isFxZeroArg) {
+std::string EmitIsFxZero(int stackIdx, std::string isFxZeroArg) {
   std::ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream
-      << EmitExpr(isFxZeroArg)
+      << EmitExpr(stackIdx, isFxZeroArg)
       << "    cmpl $0, %eax\n"
       << "    sete %al\n"
       << "    movzbl %al, %eax\n"
@@ -449,11 +482,11 @@ std::string EmitIsFxZero(std::string isFxZeroArg) {
   return exprEmissionStream.str();
 }
 
-std::string EmitIsNull(std::string isNullArg) {
+std::string EmitIsNull(int stackIdx, std::string isNullArg) {
   std::ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream
-      << EmitExpr(isNullArg)
+      << EmitExpr(stackIdx, isNullArg)
       << "    cmpl $" << Null << ", %eax\n"
       << "    sete %al\n"
       << "    movzbl %al, %eax\n"
@@ -464,11 +497,11 @@ std::string EmitIsNull(std::string isNullArg) {
   return exprEmissionStream.str();
 }
 
-std::string EmitIsBoolean(std::string isBooleanArg) {
+std::string EmitIsBoolean(int stackIdx, std::string isBooleanArg) {
   std::ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream
-      << EmitExpr(isBooleanArg)
+      << EmitExpr(stackIdx, isBooleanArg)
       << "    and $" << BoolMask << ", %al\n"
       << "    cmp $" << BoolTag << ", %al\n"
       << "    sete %al\n"
@@ -480,11 +513,11 @@ std::string EmitIsBoolean(std::string isBooleanArg) {
   return exprEmissionStream.str();
 }
 
-std::string EmitIsChar(std::string isCharArg) {
+std::string EmitIsChar(int stackIdx, std::string isCharArg) {
   std::ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream
-      << EmitExpr(isCharArg)
+      << EmitExpr(stackIdx, isCharArg)
       << "    and $" << CharMask << ", %al\n"
       << "    cmp $" << CharTag << ", %al\n"
       << "    sete %al\n"
@@ -496,11 +529,11 @@ std::string EmitIsChar(std::string isCharArg) {
   return exprEmissionStream.str();
 }
 
-std::string EmitNot(std::string notArg) {
+std::string EmitNot(int stackIdx, std::string notArg) {
   std::ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream
-      << EmitExpr(notArg)
+      << EmitExpr(stackIdx, notArg)
       << "    cmpl $" << BoolF << ", %eax\n"
       << "    sete %al\n"
       << "    movzbl %al, %eax\n"
@@ -511,44 +544,59 @@ std::string EmitNot(std::string notArg) {
   return exprEmissionStream.str();
 }
 
-std::string EmitFxLogNot(std::string fxLogNotArg) {
+std::string EmitFxLogNot(int stackIdx, std::string fxLogNotArg) {
   std::ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream
-      << EmitExpr(fxLogNotArg)
+      << EmitExpr(stackIdx, fxLogNotArg)
       << "    xor $" << FxMaskNeg << ", %eax\n";
   // clang-format on
 
   return exprEmissionStream.str();
 }
 
-std::string EmitIfExpr(std::string cond, std::string conseq, std::string alt) {
+std::string EmitFxPlus(int stackIdx, std::string lhs, std::string rhs) {
+  std::ostringstream exprEmissionStream;
+  // clang-format off
+  exprEmissionStream
+      << EmitExpr(stackIdx, lhs)
+      << "    movl %eax, " << stackIdx << "(%rsp)\n"
+      << EmitExpr(stackIdx - WordSize, rhs)
+      << "    addl " << stackIdx << "(%rsp), %eax\n";
+  // clang-format on
+
+  return exprEmissionStream.str();
+}
+
+std::string EmitIfExpr(int stackIdx, std::string cond, std::string conseq,
+                       std::string alt) {
   std::string altLabel = UniqueLabel();
   std::string endLabel = UniqueLabel();
 
   std::ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream
-      << EmitExpr(cond)
+      << EmitExpr(stackIdx, cond)
       << "    cmp $" << BoolF << ", %al\n"
       << "    je " << altLabel << "\n"
-      << EmitExpr(conseq)
+      << EmitExpr(stackIdx, conseq)
       << "    jmp " << endLabel << "\n"
       << altLabel << ":\n"
-      << EmitExpr(alt)
+      << EmitExpr(stackIdx, alt)
       << endLabel << ":\n";
   // clang-format on
 
   return exprEmissionStream.str();
 }
 
-std::string EmitLogicalExpr(const std::vector<std::string> &args, bool isAnd) {
+std::string EmitLogicalExpr(int stackIdx, const std::vector<std::string> &args,
+                            bool isAnd) {
   std::ostringstream exprEmissionStream;
 
   if (args.size() == 0) {
-    exprEmissionStream << EmitExpr("#t");
+    exprEmissionStream << EmitExpr(stackIdx, "#t");
   } else if (args.size() == 1) {
-    exprEmissionStream << EmitExpr(args[0]);
+    exprEmissionStream << EmitExpr(stackIdx, args[0]);
   } else {
     std::ostringstream newExpr;
     newExpr << "(" << (isAnd ? "and" : "or");
@@ -560,24 +608,24 @@ std::string EmitLogicalExpr(const std::vector<std::string> &args, bool isAnd) {
     newExpr << ")";
 
     if (isAnd) {
-      exprEmissionStream << EmitIfExpr(args[0], newExpr.str(), "#f");
+      exprEmissionStream << EmitIfExpr(stackIdx, args[0], newExpr.str(), "#f");
     } else {
-      exprEmissionStream << EmitIfExpr(args[0], "#t", newExpr.str());
+      exprEmissionStream << EmitIfExpr(stackIdx, args[0], "#t", newExpr.str());
     }
   }
 
   return exprEmissionStream.str();
 }
 
-std::string EmitAndExpr(const std::vector<std::string> &andArgs) {
-  return EmitLogicalExpr(andArgs, true);
+std::string EmitAndExpr(int stackIdx, const std::vector<std::string> &andArgs) {
+  return EmitLogicalExpr(stackIdx, andArgs, true);
 }
 
-std::string EmitOrExpr(const std::vector<std::string> &orArgs) {
-  return EmitLogicalExpr(orArgs, false);
+std::string EmitOrExpr(int stackIdx, const std::vector<std::string> &orArgs) {
+  return EmitLogicalExpr(stackIdx, orArgs, false);
 }
 
-std::string EmitExpr(std::string expr) {
+std::string EmitExpr(int stackIdx, std::string expr) {
   assert(IsExpr(expr));
 
   if (IsImmediate(expr)) {
@@ -606,27 +654,35 @@ std::string EmitExpr(std::string expr) {
                       {"char?", EmitIsChar},
                       {"not", EmitNot},
                       {"fxlognot", EmitFxLogNot}};
-    return unaryEmitters[primitiveName](arg);
+    return unaryEmitters[primitiveName](stackIdx, arg);
   }
 
-  std::string cond;
-  std::string conseq;
-  std::string alt;
+  std::vector<std::string> args;
 
-  if (TryParseIfExpr(expr, &cond, &conseq, &alt)) {
-    return EmitIfExpr(cond, conseq, alt);
+  if (TryParseBinaryPrimitive(expr, &primitiveName, &args)) {
+    assert(args.size() == 2);
+    static std::unordered_map<std::string, TBinaryPrimitiveEmitter>
+        binaryEmitters{{"fx+", EmitFxPlus}};
+    return binaryEmitters[primitiveName](stackIdx, args[0], args[1]);
+  }
+
+  std::vector<std::string> ifParts;
+
+  if (TryParseIfExpr(expr, &ifParts)) {
+    assert(ifParts.size() == 3);
+    return EmitIfExpr(stackIdx, ifParts[0], ifParts[1], ifParts[2]);
   }
 
   std::vector<std::string> andArgs;
 
   if (TryParseAndExpr(expr, &andArgs)) {
-    return EmitAndExpr(andArgs);
+    return EmitAndExpr(stackIdx, andArgs);
   }
 
   std::vector<std::string> orArgs;
 
   if (TryParseOrExpr(expr, &orArgs)) {
-    return EmitOrExpr(orArgs);
+    return EmitOrExpr(stackIdx, orArgs);
   }
 
   assert(false);
@@ -640,7 +696,10 @@ std::string EmitProgram(std::string programSource) {
       << "    .globl scheme_entry\n"
       << "    .type scheme_entry, @function\n"
       << "scheme_entry:\n"
-      << EmitExpr(programSource)
+      << "    movq %rsp, %rcx\n"
+      << "    movq 8(%rsp), %rsp\n"
+      << EmitExpr(-4, programSource)
+      << "    movq %rcx, %rsp\n"
       << "    ret\n";
   // clang-format on
 
@@ -652,7 +711,8 @@ int main(int argc, char *argv[]) {
       "/home/ergawy/repos/inc-compiler/src/tests-1.1-req.scm",
       "/home/ergawy/repos/inc-compiler/src/tests-1.2-req.scm",
       "/home/ergawy/repos/inc-compiler/src/tests-1.3-req.scm",
-      "/home/ergawy/repos/inc-compiler/src/tests-1.4-req.scm"};
+      "/home/ergawy/repos/inc-compiler/src/tests-1.4-req.scm",
+      "/home/ergawy/repos/inc-compiler/src/tests-1.5-req.scm"};
 
   int testCaseCounter = 1;
   int failedTestCaseCounter = 0;
@@ -748,7 +808,7 @@ int main(int argc, char *argv[]) {
       programAsmOutputStream << programAsm;
       programAsmOutputStream.close();
 
-      Exec(("clang /home/ergawy/repos/sil-compiler/runtime.c " + testId +
+      Exec(("gcc /home/ergawy/repos/sil-compiler/runtime.c " + testId +
             ".s -o " + testId + ".out")
                .c_str());
       auto actualResult = Exec(("./" + testId + ".out").c_str());
@@ -772,7 +832,7 @@ int main(int argc, char *argv[]) {
 
   if (failedTestCaseCounter > 0) {
     std::cout << "\n\033[1;31mFailed/Total: " << failedTestCaseCounter << "/"
-              << testCaseCounter << "\033[0m\n";
+              << (testCaseCounter - 1) << "\033[0m\n";
   }
 
   return 0;

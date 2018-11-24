@@ -1,6 +1,9 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <sys/mman.h>
+#include <unistd.h>
 
-int scheme_entry();
+int scheme_entry(char*);
 
 const unsigned int FxShift = 2;
 const unsigned int FxMask = 0x03;
@@ -53,7 +56,49 @@ static void print_ptr(ptr x) {
   printf("\n");
 }
 
+static char *allocate_protected_space(int size) {
+  int page = getpagesize();
+  int status;
+  int aligned_size = ((size + page - 1) / page) * page;
+  char *p = mmap(0, aligned_size + 2 * page, PROT_READ | PROT_WRITE,
+                 MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
+
+  if (p == MAP_FAILED) {
+    exit(1);
+  }
+
+  status = mprotect(p, page, PROT_NONE);
+
+  if (status != 0) {
+    exit(1);
+  }
+
+  status = mprotect(p + page + aligned_size, page, PROT_NONE);
+
+  if (status != 0) {
+    exit(1);
+  }
+
+  return (p + page);
+}
+
+static void deallocate_protected_space(char *p, int size) {
+  int page = getpagesize();
+  int status;
+  int aligned_size = ((size + page - 1) / page) * page;
+  status = munmap(p - page, aligned_size + 2 * page);
+
+  if (status != 0) {
+    exit(1);
+  }
+}
+
 int main(int argc, char **argv) {
-  print_ptr(scheme_entry());
+  int stack_size = (16 * 4096);
+  char *stack_top = allocate_protected_space(stack_size);
+  char *stack_base = stack_top + stack_size;
+  print_ptr(scheme_entry(stack_base));
+  deallocate_protected_space(stack_top, stack_size);
+
   return 0;
 }
