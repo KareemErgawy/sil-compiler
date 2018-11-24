@@ -81,6 +81,8 @@ const unsigned int FxTag = 0x00;
 
 const unsigned int BoolF = 0x2F;
 const unsigned int BoolT = 0x6F;
+const unsigned int BoolMask = 0x3F;
+const unsigned int BoolTag = 0x2F;
 const unsigned int BoolBit = 6;
 
 const unsigned int Null = 0x3F;
@@ -467,13 +469,10 @@ std::string EmitIsBoolean(std::string isBooleanArg) {
   // clang-format off
   exprEmissionStream
       << EmitExpr(isBooleanArg)
-      << "    cmpl $" << BoolF << ", %eax\n"
-      << "    sete %bl\n"
-      << "    movzbl %bl, %ebx\n"
-      << "    cmpl $" << BoolT << ", %eax\n"
+      << "    and $" << BoolMask << ", %al\n"
+      << "    cmp $" << BoolTag << ", %al\n"
       << "    sete %al\n"
       << "    movzbl %al, %eax\n"
-      << "    or %bl, %al\n"
       << "    sal $" << BoolBit << ", %al\n"
       << "    or $" << BoolF << ", %al\n";
   // clang-format on
