@@ -27,6 +27,8 @@ bool TryParseSubExpr(std::string expr, size_t subExprStart,
 bool TryParseIfExpr(std::string expr, std::string *outCond = nullptr,
                     std::string *outConseq = nullptr,
                     std::string *outAlt = nullptr);
+bool TryParseAndExpr(std::string expr,
+                     std::vector<std::string> *outAndArgs = nullptr);
 bool IsExpr(std::string expr);
 
 char TokenToChar(std::string token);
@@ -47,6 +49,7 @@ std::string EmitIsChar(std::string isCharArg);
 std::string EmitNot(std::string notArg);
 std::string EmitFxLogNot(std::string fxLogNotArg);
 std::string EmitIfExpr(std::string cond, std::string conseq, std::string alt);
+std::string EmitAndExpr(const std::vector<std::string> &andArgs);
 std::string EmitExpr(std::string expr);
 
 std::string UniqueLabel() {
@@ -223,6 +226,15 @@ bool TryParseSubExpr(std::string expr, size_t subExprStart,
   return IsExpr(subExpr);
 }
 
+bool skipSpaceAndCheckIfEndOfExpr(std::string expr, size_t *idx) {
+  assert(*idx < expr.size());
+
+  for (; *idx < (expr.size() - 1) && std::isspace(expr[*idx]); ++*idx) {
+  }
+
+  return (*idx == (expr.size() - 1));
+}
+
 bool TryParseIfExpr(std::string expr, std::string *outCond,
                     std::string *outConseq, std::string *outAlt) {
   if (expr.size() < 4) {
@@ -239,51 +251,59 @@ bool TryParseIfExpr(std::string expr, std::string *outCond,
 
   size_t idx = 3;
 
-  auto skipSpaceAndCheckIfEndOfExpr = [&]() {
-    assert(idx < expr.size());
-    if (!isspace(expr[idx])) {
+  std::string *outPtrs[]{outCond, outConseq, outAlt};
+
+  for (int i = 0; i < 3; ++i) {
+    if (skipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
       return false;
     }
 
-    for (; idx < (expr.size() - 1) && std::isspace(expr[idx]); ++idx) {
+    if (!TryParseSubExpr(expr, idx, outPtrs[i], &idx)) {
+      return false;
     }
-
-    return (idx == (expr.size() - 1));
-  };
-
-  if (skipSpaceAndCheckIfEndOfExpr()) {
-    return false;
-  }
-
-  // Condition.
-  if (!TryParseSubExpr(expr, idx, outCond, &idx)) {
-    return false;
-  }
-
-  if (skipSpaceAndCheckIfEndOfExpr()) {
-    return false;
-  }
-
-  // Consequence path.
-  if (!TryParseSubExpr(expr, idx, outConseq, &idx)) {
-    return false;
-  }
-
-  if (skipSpaceAndCheckIfEndOfExpr()) {
-    return false;
-  }
-
-  // Alternative path.
-  if (!TryParseSubExpr(expr, idx, outAlt, &idx)) {
-    return false;
   }
 
   return idx == (expr.size() - 1);
 }
 
+bool TryParseAndExpr(std::string expr, std::vector<std::string> *outAndArgs) {
+  if (expr.size() < 5) {
+    return false;
+  }
+
+  if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+    return false;
+  }
+
+  if (expr[1] != 'a' || expr[2] != 'n' || expr[3] != 'd') {
+    return false;
+  }
+
+  if (outAndArgs != nullptr) {
+    outAndArgs->clear();
+  }
+
+  size_t idx = 4;
+
+  while (!skipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
+    std::string *argPtr = nullptr;
+
+    if (outAndArgs != nullptr) {
+      outAndArgs->push_back("");
+      argPtr = &outAndArgs->data()[outAndArgs->size() - 1];
+    }
+
+    if (!TryParseSubExpr(expr, idx, argPtr, &idx)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 bool IsExpr(std::string expr) {
   return IsImmediate(expr) || TryParseUnaryPrimitive(expr) ||
-         TryParseIfExpr(expr);
+         TryParseIfExpr(expr) || TryParseAndExpr(expr);
 }
 
 char TokenToChar(std::string token) {
@@ -500,6 +520,28 @@ std::string EmitIfExpr(std::string cond, std::string conseq, std::string alt) {
   return exprEmissionStream.str();
 }
 
+std::string EmitAndExpr(const std::vector<std::string> &andArgs) {
+  std::ostringstream exprEmissionStream;
+
+  if (andArgs.size() == 0) {
+    exprEmissionStream << EmitExpr("#t");
+  } else if (andArgs.size() == 1) {
+    exprEmissionStream << EmitExpr(andArgs[0]);
+  } else {
+    std::ostringstream newAndExpr;
+    newAndExpr << "(and";
+
+    for (int i = 1; i < andArgs.size(); ++i) {
+      newAndExpr << " " << andArgs[i];
+    }
+
+    newAndExpr << ")";
+    exprEmissionStream << EmitIfExpr(andArgs[0], newAndExpr.str(), "#f");
+  }
+
+  return exprEmissionStream.str();
+}
+
 std::string EmitExpr(std::string expr) {
   assert(IsExpr(expr));
 
@@ -538,6 +580,12 @@ std::string EmitExpr(std::string expr) {
 
   if (TryParseIfExpr(expr, &cond, &conseq, &alt)) {
     return EmitIfExpr(cond, conseq, alt);
+  }
+
+  std::vector<std::string> andArgs;
+
+  if (TryParseAndExpr(expr, &andArgs)) {
+    return EmitAndExpr(andArgs);
   }
 
   assert(false);
