@@ -29,6 +29,8 @@ bool TryParseIfExpr(std::string expr, std::string *outCond = nullptr,
                     std::string *outAlt = nullptr);
 bool TryParseAndExpr(std::string expr,
                      std::vector<std::string> *outAndArgs = nullptr);
+bool TryParseOrExpr(std::string expr,
+                    std::vector<std::string> *outOrArgs = nullptr);
 bool IsExpr(std::string expr);
 
 char TokenToChar(std::string token);
@@ -266,6 +268,30 @@ bool TryParseIfExpr(std::string expr, std::string *outCond,
   return idx == (expr.size() - 1);
 }
 
+bool TryParseVariableNumOfSubExpr(std::string expr, size_t startIdx,
+                                  std::vector<std::string> *outSubExprs) {
+  if (outSubExprs != nullptr) {
+    outSubExprs->clear();
+  }
+
+  size_t idx = startIdx;
+
+  while (!skipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
+    std::string *argPtr = nullptr;
+
+    if (outSubExprs != nullptr) {
+      outSubExprs->push_back("");
+      argPtr = &outSubExprs->data()[outSubExprs->size() - 1];
+    }
+
+    if (!TryParseSubExpr(expr, idx, argPtr, &idx)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 bool TryParseAndExpr(std::string expr, std::vector<std::string> *outAndArgs) {
   if (expr.size() < 5) {
     return false;
@@ -279,31 +305,28 @@ bool TryParseAndExpr(std::string expr, std::vector<std::string> *outAndArgs) {
     return false;
   }
 
-  if (outAndArgs != nullptr) {
-    outAndArgs->clear();
+  return TryParseVariableNumOfSubExpr(expr, 4, outAndArgs);
+}
+
+bool TryParseOrExpr(std::string expr, std::vector<std::string> *outOrArgs) {
+  if (expr.size() < 4) {
+    return false;
   }
 
-  size_t idx = 4;
-
-  while (!skipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
-    std::string *argPtr = nullptr;
-
-    if (outAndArgs != nullptr) {
-      outAndArgs->push_back("");
-      argPtr = &outAndArgs->data()[outAndArgs->size() - 1];
-    }
-
-    if (!TryParseSubExpr(expr, idx, argPtr, &idx)) {
-      return false;
-    }
+  if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+    return false;
   }
 
-  return true;
+  if (expr[1] != 'o' || expr[2] != 'r') {
+    return false;
+  }
+
+  return TryParseVariableNumOfSubExpr(expr, 3, outOrArgs);
 }
 
 bool IsExpr(std::string expr) {
   return IsImmediate(expr) || TryParseUnaryPrimitive(expr) ||
-         TryParseIfExpr(expr) || TryParseAndExpr(expr);
+         TryParseIfExpr(expr) || TryParseAndExpr(expr) || TryParseOrExpr(expr);
 }
 
 char TokenToChar(std::string token) {
@@ -520,26 +543,39 @@ std::string EmitIfExpr(std::string cond, std::string conseq, std::string alt) {
   return exprEmissionStream.str();
 }
 
-std::string EmitAndExpr(const std::vector<std::string> &andArgs) {
+std::string EmitLogicalExpr(const std::vector<std::string> &args, bool isAnd) {
   std::ostringstream exprEmissionStream;
 
-  if (andArgs.size() == 0) {
+  if (args.size() == 0) {
     exprEmissionStream << EmitExpr("#t");
-  } else if (andArgs.size() == 1) {
-    exprEmissionStream << EmitExpr(andArgs[0]);
+  } else if (args.size() == 1) {
+    exprEmissionStream << EmitExpr(args[0]);
   } else {
-    std::ostringstream newAndExpr;
-    newAndExpr << "(and";
+    std::ostringstream newExpr;
+    newExpr << "(" << (isAnd ? "and" : "or");
 
-    for (int i = 1; i < andArgs.size(); ++i) {
-      newAndExpr << " " << andArgs[i];
+    for (int i = 1; i < args.size(); ++i) {
+      newExpr << " " << args[i];
     }
 
-    newAndExpr << ")";
-    exprEmissionStream << EmitIfExpr(andArgs[0], newAndExpr.str(), "#f");
+    newExpr << ")";
+
+    if (isAnd) {
+      exprEmissionStream << EmitIfExpr(args[0], newExpr.str(), "#f");
+    } else {
+      exprEmissionStream << EmitIfExpr(args[0], "#t", newExpr.str());
+    }
   }
 
   return exprEmissionStream.str();
+}
+
+std::string EmitAndExpr(const std::vector<std::string> &andArgs) {
+  return EmitLogicalExpr(andArgs, true);
+}
+
+std::string EmitOrExpr(const std::vector<std::string> &orArgs) {
+  return EmitLogicalExpr(orArgs, false);
 }
 
 std::string EmitExpr(std::string expr) {
@@ -586,6 +622,12 @@ std::string EmitExpr(std::string expr) {
 
   if (TryParseAndExpr(expr, &andArgs)) {
     return EmitAndExpr(andArgs);
+  }
+
+  std::vector<std::string> orArgs;
+
+  if (TryParseOrExpr(expr, &orArgs)) {
+    return EmitOrExpr(orArgs);
   }
 
   assert(false);
