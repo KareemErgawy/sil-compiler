@@ -212,7 +212,7 @@ bool TryParseBinaryPrimitive(std::string expr, std::string *outPrimitiveName,
     return false;
   }
 
-  static std::vector<std::string> binaryPrimitiveNames{"fx+", "fx-"};
+  static std::vector<std::string> binaryPrimitiveNames{"fx+", "fx-", "fx*"};
 
   std::string primitiveName = "";
   size_t idx;
@@ -582,6 +582,20 @@ std::string EmitFxSub(int stackIdx, std::string lhs, std::string rhs) {
   return exprEmissionStream.str();
 }
 
+std::string EmitFxMul(int stackIdx, std::string lhs, std::string rhs) {
+  std::ostringstream exprEmissionStream;
+  // clang-format off
+  exprEmissionStream
+      << EmitExpr(stackIdx, lhs)
+      << "    sarl $" << FxShift << ", %eax\n"
+      << "    movl %eax, " << stackIdx << "(%rsp)\n"
+      << EmitExpr(stackIdx - WordSize, rhs)
+      << "    imul " << stackIdx << "(%rsp), %eax\n";
+  // clang-format on
+
+  return exprEmissionStream.str();
+}
+
 std::string EmitIfExpr(int stackIdx, std::string cond, std::string conseq,
                        std::string alt) {
   std::string altLabel = UniqueLabel();
@@ -676,7 +690,8 @@ std::string EmitExpr(int stackIdx, std::string expr) {
   if (TryParseBinaryPrimitive(expr, &primitiveName, &args)) {
     assert(args.size() == 2);
     static std::unordered_map<std::string, TBinaryPrimitiveEmitter>
-        binaryEmitters{{"fx+", EmitFxAdd}, {"fx-", EmitFxSub}};
+        binaryEmitters{{"fx+", EmitFxAdd}, {"fx-", EmitFxSub},
+        {"fx*", EmitFxMul}};
     return binaryEmitters[primitiveName](stackIdx, args[0], args[1]);
   }
 
