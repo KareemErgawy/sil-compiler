@@ -14,6 +14,8 @@
 // TODO Reduce code repetition on parsing functions: TryParseUnaryPrimitive,
 // TryParseBinaryPrimitive, TryParseIfExpr, TryParseAndExpr, TryParseOrExpr.
 
+// TODO Switch emitted code to inter syntax.
+
 std::string Exec(const char *cmd);
 
 bool IsFixNum(std::string token);
