@@ -809,7 +809,7 @@ std::string EmitProgram(std::string programSource) {
       << "    .type scheme_entry, @function\n"
       << "scheme_entry:\n"
       << "    movq %rsp, %rcx\n"
-      << "    movq 8(%rsp), %rsp\n"
+      << "    movq %rdi, %rsp\n"
       << EmitExpr(-4, programSource)
       << "    movq %rcx, %rsp\n"
       << "    ret\n";
