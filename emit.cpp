@@ -402,6 +402,26 @@ string EmitLetExpr(int stackIdx, TEnvironment env, const TBindings &bindings,
     return exprEmissionStream.str();
 }
 
+string EmitLetAsteriskExpr(int stackIdx, TEnvironment env,
+                           const TBindings &bindings, string letBody) {
+    ostringstream exprEmissionStream;
+    int si = stackIdx;
+
+    for (auto b : bindings) {
+        // clang-format off
+        exprEmissionStream
+            << EmitExpr(si, env, b.second)
+            << EmitStackSave(si);
+        // clang-format on
+        env[b.first] = si;
+        si -= WordSize;
+    }
+
+    exprEmissionStream << EmitExpr(si, env, letBody);
+
+    return exprEmissionStream.str();
+}
+
 string EmitExpr(int stackIdx, TEnvironment env, string expr) {
     assert(IsExpr(expr));
 
@@ -476,6 +496,13 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr) {
 
     if (TryParseLetExpr(expr, &bindings, &letBody)) {
         return EmitLetExpr(stackIdx, env, bindings, letBody);
+    }
+
+    TBindings bindings2;
+    string letBody2;
+
+    if (TryParseLetAsteriskExpr(expr, &bindings2, &letBody2)) {
+        return EmitLetAsteriskExpr(stackIdx, env, bindings2, letBody2);
     }
 
     assert(false);

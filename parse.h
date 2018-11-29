@@ -32,6 +32,8 @@ bool TryParseOrExpr(std::string expr,
                     std::vector<std::string> *outOrArgs = nullptr);
 bool TryParseLetExpr(std::string expr, TBindings *outBindings = nullptr,
                      std::string *outLetBody = nullptr);
+bool TryParseLetAsteriskExpr(std::string expr, TBindings *outBindings = nullptr,
+                             std::string *outLetBody = nullptr);
 bool IsExpr(std::string expr);
 
 #endif

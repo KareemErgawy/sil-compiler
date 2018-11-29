@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <iostream>
 
 using namespace std;
 
@@ -266,6 +267,100 @@ bool TryParseOrExpr(string expr, vector<string> *outOrArgs) {
     return TryParseVariableNumOfSubExpr(expr, 3, outOrArgs);
 }
 
+bool TryParseLetBindings(string expr, size_t *idx, TBindings *outBindings) {
+    assert(idx != nullptr && *idx < expr.size());
+
+    if (skipSpaceAndCheckIfEndOfExpr(expr, idx)) {
+        return false;
+    }
+
+    // Parse variable definitions.
+    if (expr[*idx] != '(') {
+        return false;
+    }
+
+    while (true) {
+        ++*idx;
+
+        if (expr[*idx] == ')') {
+            break;
+        }
+
+        if (skipSpaceAndCheckIfEndOfExpr(expr, idx)) {
+            return false;
+        }
+
+        if (expr[*idx] != '[') {
+            return false;
+        }
+
+        ++*idx;
+
+        auto varEnd = expr.find(' ', *idx);
+
+        if (varEnd == string::npos) {
+            return false;
+        }
+
+        auto varName = expr.substr(*idx, varEnd - *idx);
+        *idx = varEnd;
+
+        if (skipSpaceAndCheckIfEndOfExpr(expr, idx)) {
+            return false;
+        }
+
+        auto defStart = *idx;
+
+        // Bracketed expression.
+        int numOpenBrac = 1;
+        ++*idx;
+
+        for (; *idx < expr.size() && numOpenBrac > 0; ++*idx) {
+            if (expr[*idx] == '[') {
+                ++numOpenBrac;
+            }
+
+            if (expr[*idx] == ']') {
+                --numOpenBrac;
+            }
+        }
+
+        if (*idx == expr.size()) {
+            return false;
+        }
+
+        auto varDef = expr.substr(defStart, *idx - defStart - 1);
+
+        if (!IsExpr(varDef)) {
+            return false;
+        }
+
+        if (outBindings != nullptr) {
+            outBindings->insert({varName, varDef});
+        }
+
+        --*idx;
+    }
+
+    ++*idx;
+
+    return true;
+}
+
+bool TryParseLetBody(string expr, size_t idx, string *outLetBody) {
+    if (skipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
+        return false;
+    }
+
+    auto letBody = expr.substr(idx, expr.size() - 1 - idx);
+
+    if (outLetBody != nullptr) {
+        *outLetBody = letBody;
+    }
+
+    return IsExpr(letBody);
+}
+
 bool TryParseLetExpr(string expr, TBindings *outBindings, string *outLetBody) {
     if (expr.size() < 5) {
         return false;
@@ -280,97 +375,37 @@ bool TryParseLetExpr(string expr, TBindings *outBindings, string *outLetBody) {
     }
 
     size_t idx = 4;
-    if (skipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
+
+    return TryParseLetBindings(expr, &idx, outBindings) &&
+           TryParseLetBody(expr, idx, outLetBody);
+}
+
+bool TryParseLetAsteriskExpr(string expr, TBindings *outBindings,
+                             string *outLetBody) {
+    std::cout << expr << "\n";
+    if (expr.size() < 6) {
         return false;
     }
 
-    // Parse variable definitions.
-    if (expr[idx] != '(') {
+    if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
         return false;
     }
 
-    while (true) {
-        ++idx;
-
-        if (expr[idx] == ')') {
-            break;
-        }
-
-        if (skipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
-            return false;
-        }
-
-        if (expr[idx] != '[') {
-            return false;
-        }
-
-        ++idx;
-
-        auto varEnd = expr.find(' ', idx);
-
-        if (varEnd == string::npos) {
-            return false;
-        }
-
-        auto varName = expr.substr(idx, varEnd - idx);
-        idx = varEnd;
-
-        if (skipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
-            return false;
-        }
-
-        auto defStart = idx;
-
-        // Bracketed expression.
-        int numOpenBrac = 1;
-        ++idx;
-
-        for (; idx < expr.size() && numOpenBrac > 0; ++idx) {
-            if (expr[idx] == '[') {
-                ++numOpenBrac;
-            }
-
-            if (expr[idx] == ']') {
-                --numOpenBrac;
-            }
-        }
-
-        if (idx == expr.size()) {
-            return false;
-        }
-
-        auto varDef = expr.substr(defStart, idx - defStart - 1);
-
-        if (!IsExpr(varDef)) {
-            return false;
-        }
-
-        if (outBindings != nullptr) {
-            outBindings->insert({varName, varDef});
-        }
-
-        --idx;
-    }
-
-    ++idx;
-
-    if (skipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
+    if (expr[1] != 'l' || expr[2] != 'e' || expr[3] != 't' || expr[4] != '*') {
         return false;
     }
 
-    auto letBody = expr.substr(idx, expr.size() - 1 - idx);
+    size_t idx = 5;
 
-    if (outLetBody != nullptr) {
-        *outLetBody = letBody;
-    }
-
-    return IsExpr(letBody);
+    return TryParseLetBindings(expr, &idx, outBindings) &&
+           TryParseLetBody(expr, idx, outLetBody);
 }
 
 bool IsExpr(string expr) {
     return IsImmediate(expr) || IsVarName(expr) ||
            TryParseUnaryPrimitive(expr) || TryParseBinaryPrimitive(expr) ||
            TryParseIfExpr(expr) || TryParseAndExpr(expr) ||
-           TryParseOrExpr(expr) || TryParseLetExpr(expr);
+           TryParseOrExpr(expr) || TryParseLetExpr(expr) ||
+           TryParseLetAsteriskExpr(expr);
 }
 

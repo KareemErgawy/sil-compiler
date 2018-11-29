@@ -40,7 +40,8 @@ int main(int argc, char *argv[]) {
         "/home/ergawy/repos/inc-compiler/src/tests-1.3-req.scm",
         "/home/ergawy/repos/inc-compiler/src/tests-1.4-req.scm",
         "/home/ergawy/repos/inc-compiler/src/tests-1.5-req.scm",
-        "/home/ergawy/repos/inc-compiler/src/tests-1.6-req.scm"};
+        "/home/ergawy/repos/inc-compiler/src/tests-1.6-req.scm",
+        "/home/ergawy/repos/inc-compiler/src/tests-1.6-opt.scm"};
 
     int testCaseCounter = 1;
     int failedTestCaseCounter = 0;
