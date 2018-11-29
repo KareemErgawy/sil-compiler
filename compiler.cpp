@@ -16,9 +16,14 @@
 
 // TODO Switch emitted code to intel syntax.
 
-// TODO Parsing is too sensitive to whitespace. Make more robust.
+// TODO Parsing is too sensitive to whitespace. Make it more robust.
 
 using namespace std;
+
+using TBindings = unordered_map<string, string>;
+using TEnvironment = unordered_map<string, int>;
+using TUnaryPrimitiveEmitter = string (*)(int, TEnvironment, string);
+using TBinaryPrimitiveEmitter = string (*)(int, TEnvironment, string, string);
 
 string Exec(const char *cmd);
 
@@ -39,43 +44,43 @@ bool TryParseVariableNumOfSubExpr(string expr, size_t startIdx,
 bool TryParseIfExpr(string expr, vector<string> *outIfParts = nullptr);
 bool TryParseAndExpr(string expr, vector<string> *outAndArgs = nullptr);
 bool TryParseOrExpr(string expr, vector<string> *outOrArgs = nullptr);
-bool TryParseLetExpr(string expr,
-                     unordered_map<string, string> *outVarToDefMap = nullptr,
+bool TryParseLetExpr(string expr, TBindings *outBindings = nullptr,
                      string *outLetBody = nullptr);
 bool IsExpr(string expr);
 
 char TokenToChar(string token);
 int ImmediateRep(string token);
 
-using TUnaryPrimitiveEmitter = string (*)(int, string);
-using TBinaryPrimitiveEmitter = string (*)(int, string, string);
-
-string EmitFxAddImmediate(int stackIdx, string fxAddArg, string fxAddImmediate);
-string EmitFxAdd1(int stackIdx, string fxAdd1Arg);
-string EmitFxSub1(int stackIdx, string fxSub1Arg);
-string EmitFixNumToChar(int stackIdx, string fixNumToCharArg);
-string EmitCharToFixNum(int stackIdx, string fixNumToCharArg);
-string EmitIsFixNum(int stackIdx, string isFixNumArg);
-string EmitIsFxZero(int stackIdx, string isFxZeroArg);
-string EmitIsNull(int stackIdx, string isNullArg);
-string EmitIsBoolean(int stackIdx, string isBooleanArg);
-string EmitIsChar(int stackIdx, string isCharArg);
-string EmitNot(int stackIdx, string notArg);
-string EmitFxLogNot(int stackIdx, string fxLogNotArg);
-string EmitFxAdd(int stackIdx, string lhs, string rhs);
-string EmitFxSub(int stackIdx, string lhs, string rhs);
-string EmitFxMul(int stackIdx, string lhs, string rhs);
-string EmitFxLogOr(int stackIdx, string lhs, string rhs);
-string EmitFxLogAnd(int stackIdx, string lhs, string rhs);
-string EmitFxCmp(int stackIdx, string lhs, string rhs, string setcc);
-string EmitFxEq(int stackIdx, string lhs, string rhs);
-string EmitFxLT(int stackIdx, string lhs, string rhs);
-string EmitFxLE(int stackIdx, string lhs, string rhs);
-string EmitFxGT(int stackIdx, string lhs, string rhs);
-string EmitFxGE(int stackIdx, string lhs, string rhs);
-string EmitIfExpr(int stackIdx, string cond, string conseq, string alt);
-string EmitAndExpr(int stackIdx, const vector<string> &andArgs);
-string EmitExpr(int stackIdx, string expr);
+string EmitFxAddImmediate(int stackIdx, TEnvironment env, string fxAddArg,
+                          string fxAddImmediate);
+string EmitFxAdd1(int stackIdx, TEnvironment env, string fxAdd1Arg);
+string EmitFxSub1(int stackIdx, TEnvironment env, string fxSub1Arg);
+string EmitFixNumToChar(int stackIdx, TEnvironment env, string fixNumToCharArg);
+string EmitCharToFixNum(int stackIdx, TEnvironment env, string fixNumToCharArg);
+string EmitIsFixNum(int stackIdx, TEnvironment env, string isFixNumArg);
+string EmitIsFxZero(int stackIdx, TEnvironment env, string isFxZeroArg);
+string EmitIsNull(int stackIdx, TEnvironment env, string isNullArg);
+string EmitIsBoolean(int stackIdx, TEnvironment env, string isBooleanArg);
+string EmitIsChar(int stackIdx, TEnvironment env, string isCharArg);
+string EmitNot(int stackIdx, TEnvironment env, string notArg);
+string EmitFxLogNot(int stackIdx, TEnvironment env, string fxLogNotArg);
+string EmitFxAdd(int stackIdx, TEnvironment env, string lhs, string rhs);
+string EmitFxSub(int stackIdx, TEnvironment env, string lhs, string rhs);
+string EmitFxMul(int stackIdx, TEnvironment env, string lhs, string rhs);
+string EmitFxLogOr(int stackIdx, TEnvironment env, string lhs, string rhs);
+string EmitFxLogAnd(int stackIdx, TEnvironment env, string lhs, string rhs);
+string EmitFxCmp(int stackIdx, TEnvironment env, string lhs, string rhs,
+                 string setcc);
+string EmitFxEq(int stackIdx, TEnvironment env, string lhs, string rhs);
+string EmitFxLT(int stackIdx, TEnvironment env, string lhs, string rhs);
+string EmitFxLE(int stackIdx, TEnvironment env, string lhs, string rhs);
+string EmitFxGT(int stackIdx, TEnvironment env, string lhs, string rhs);
+string EmitFxGE(int stackIdx, TEnvironment env, string lhs, string rhs);
+string EmitIfExpr(int stackIdx, TEnvironment env, string cond, string conseq,
+                  string alt);
+string EmitAndExpr(int stackIdx, TEnvironment env,
+                   const vector<string> &andArgs);
+string EmitExpr(int stackIdx, TEnvironment env, string expr);
 
 string UniqueLabel() {
     static unsigned int count = 0;
@@ -379,8 +384,7 @@ bool TryParseOrExpr(string expr, vector<string> *outOrArgs) {
     return TryParseVariableNumOfSubExpr(expr, 3, outOrArgs);
 }
 
-bool TryParseLetExpr(string expr, unordered_map<string, string> *outVarToDefMap,
-                     string *outLetBody) {
+bool TryParseLetExpr(string expr, TBindings *outBindings, string *outLetBody) {
     if (expr.size() < 5) {
         return false;
     }
@@ -459,6 +463,10 @@ bool TryParseLetExpr(string expr, unordered_map<string, string> *outVarToDefMap,
             return false;
         }
 
+        if (outBindings != nullptr) {
+            outBindings->insert({varName, varDef});
+        }
+
         --idx;
     }
 
@@ -469,6 +477,11 @@ bool TryParseLetExpr(string expr, unordered_map<string, string> *outVarToDefMap,
     }
 
     auto letBody = expr.substr(idx, expr.size() - 1 - idx);
+
+    if (outLetBody != nullptr) {
+        *outLetBody = letBody;
+    }
+
     return IsExpr(letBody);
 }
 
@@ -520,14 +533,19 @@ int ImmediateRep(string token) {
     return (stoi(token) << FxShift) | FxTag;
 }
 
-string EmitFxAddImmediate(int stackIdx, string fxAddArg,
+string EmitVarRef(TEnvironment env, string expr) {
+    auto stackIdx = env.at(expr);
+    return "    movl " + to_string(stackIdx) + "(%rsp), %eax\n";
+}
+
+string EmitFxAddImmediate(int stackIdx, TEnvironment env, string fxAddArg,
                           string fxAddImmediate) {
     assert(IsImmediate(fxAddImmediate));
 
     ostringstream exprEmissionStream;
     // clang-format off
   exprEmissionStream 
-      << EmitExpr(stackIdx, fxAddArg)
+      << EmitExpr(stackIdx, env, fxAddArg)
       << "    addl $" << ImmediateRep(fxAddImmediate) << ", %eax\n";
   // clang-format on 
 
@@ -535,19 +553,19 @@ string EmitFxAddImmediate(int stackIdx, string fxAddArg,
 
 }
 
-string EmitFxAdd1(int stackIdx, string fxAdd1Arg) {
-    return EmitFxAddImmediate(stackIdx, fxAdd1Arg, "1");
+string EmitFxAdd1(int stackIdx, TEnvironment env, string fxAdd1Arg) {
+    return EmitFxAddImmediate(stackIdx, env, fxAdd1Arg, "1");
 }
 
-string EmitFxSub1(int stackIdx, string fxSub1Arg) {
-    return EmitFxAddImmediate(stackIdx, fxSub1Arg, "-1");
+string EmitFxSub1(int stackIdx, TEnvironment env, string fxSub1Arg) {
+    return EmitFxAddImmediate(stackIdx, env, fxSub1Arg, "-1");
 }
 
-string EmitFixNumToChar(int stackIdx, string fixNumToCharArg) {
+string EmitFixNumToChar(int stackIdx, TEnvironment env, string fixNumToCharArg) {
   ostringstream exprEmissionStream;
   // clang-format off
   exprEmissionStream
-      << EmitExpr(stackIdx, fixNumToCharArg)
+      << EmitExpr(stackIdx, env, fixNumToCharArg)
       << "    shll $" << (CharShift - FxShift) << ", %eax\n"
       << "    orl $" << CharTag << ", %eax\n";
     // clang-format on
@@ -555,22 +573,23 @@ string EmitFixNumToChar(int stackIdx, string fixNumToCharArg) {
     return exprEmissionStream.str();
 }
 
-string EmitCharToFixNum(int stackIdx, string charToFixNumArg) {
+string EmitCharToFixNum(int stackIdx, TEnvironment env,
+                        string charToFixNumArg) {
     ostringstream exprEmissionStream;
     // clang-format off
   exprEmissionStream
-      << EmitExpr(stackIdx, charToFixNumArg)
+      << EmitExpr(stackIdx, env, charToFixNumArg)
       << "    shrl $" << (CharShift - FxShift) << ", %eax\n";
     // clang-format on
 
     return exprEmissionStream.str();
 }
 
-string EmitIsFixNum(int stackIdx, string isFixNumArg) {
+string EmitIsFixNum(int stackIdx, TEnvironment env, string isFixNumArg) {
     ostringstream exprEmissionStream;
     // clang-format off
   exprEmissionStream
-      << EmitExpr(stackIdx, isFixNumArg)
+      << EmitExpr(stackIdx, env, isFixNumArg)
       << "    and $" << FxMask << ", %al\n"
       << "    cmp $" << FxTag << ", %al\n"
       << "    sete %al\n"
@@ -582,11 +601,11 @@ string EmitIsFixNum(int stackIdx, string isFixNumArg) {
     return exprEmissionStream.str();
 }
 
-string EmitIsFxZero(int stackIdx, string isFxZeroArg) {
+string EmitIsFxZero(int stackIdx, TEnvironment env, string isFxZeroArg) {
     ostringstream exprEmissionStream;
     // clang-format off
   exprEmissionStream
-      << EmitExpr(stackIdx, isFxZeroArg)
+      << EmitExpr(stackIdx, env, isFxZeroArg)
       << "    cmpl $0, %eax\n"
       << "    sete %al\n"
       << "    movzbl %al, %eax\n"
@@ -597,11 +616,11 @@ string EmitIsFxZero(int stackIdx, string isFxZeroArg) {
     return exprEmissionStream.str();
 }
 
-string EmitIsNull(int stackIdx, string isNullArg) {
+string EmitIsNull(int stackIdx, TEnvironment env, string isNullArg) {
     ostringstream exprEmissionStream;
     // clang-format off
   exprEmissionStream
-      << EmitExpr(stackIdx, isNullArg)
+      << EmitExpr(stackIdx, env, isNullArg)
       << "    cmpl $" << Null << ", %eax\n"
       << "    sete %al\n"
       << "    movzbl %al, %eax\n"
@@ -612,11 +631,11 @@ string EmitIsNull(int stackIdx, string isNullArg) {
     return exprEmissionStream.str();
 }
 
-string EmitIsBoolean(int stackIdx, string isBooleanArg) {
+string EmitIsBoolean(int stackIdx, TEnvironment env, string isBooleanArg) {
     ostringstream exprEmissionStream;
     // clang-format off
   exprEmissionStream
-      << EmitExpr(stackIdx, isBooleanArg)
+      << EmitExpr(stackIdx, env, isBooleanArg)
       << "    and $" << BoolMask << ", %al\n"
       << "    cmp $" << BoolTag << ", %al\n"
       << "    sete %al\n"
@@ -628,11 +647,11 @@ string EmitIsBoolean(int stackIdx, string isBooleanArg) {
     return exprEmissionStream.str();
 }
 
-string EmitIsChar(int stackIdx, string isCharArg) {
+string EmitIsChar(int stackIdx, TEnvironment env, string isCharArg) {
     ostringstream exprEmissionStream;
     // clang-format off
   exprEmissionStream
-      << EmitExpr(stackIdx, isCharArg)
+      << EmitExpr(stackIdx, env, isCharArg)
       << "    and $" << CharMask << ", %al\n"
       << "    cmp $" << CharTag << ", %al\n"
       << "    sete %al\n"
@@ -644,11 +663,11 @@ string EmitIsChar(int stackIdx, string isCharArg) {
     return exprEmissionStream.str();
 }
 
-string EmitNot(int stackIdx, string notArg) {
+string EmitNot(int stackIdx, TEnvironment env, string notArg) {
     ostringstream exprEmissionStream;
     // clang-format off
   exprEmissionStream
-      << EmitExpr(stackIdx, notArg)
+      << EmitExpr(stackIdx, env, notArg)
       << "    cmpl $" << BoolF << ", %eax\n"
       << "    sete %al\n"
       << "    movzbl %al, %eax\n"
@@ -659,90 +678,91 @@ string EmitNot(int stackIdx, string notArg) {
     return exprEmissionStream.str();
 }
 
-string EmitFxLogNot(int stackIdx, string fxLogNotArg) {
+string EmitFxLogNot(int stackIdx, TEnvironment env, string fxLogNotArg) {
     ostringstream exprEmissionStream;
     // clang-format off
   exprEmissionStream
-      << EmitExpr(stackIdx, fxLogNotArg)
+      << EmitExpr(stackIdx, env, fxLogNotArg)
       << "    xor $" << FxMaskNeg << ", %eax\n";
     // clang-format on
 
     return exprEmissionStream.str();
 }
 
-string EmitFxAdd(int stackIdx, string lhs, string rhs) {
+string EmitFxAdd(int stackIdx, TEnvironment env, string lhs, string rhs) {
     ostringstream exprEmissionStream;
     // clang-format off
   exprEmissionStream
-      << EmitExpr(stackIdx, lhs)
+      << EmitExpr(stackIdx, env, lhs)
       << "    movl %eax, " << stackIdx << "(%rsp)\n"
-      << EmitExpr(stackIdx - WordSize, rhs)
+      << EmitExpr(stackIdx - WordSize, env, rhs)
       << "    addl " << stackIdx << "(%rsp), %eax\n";
     // clang-format on
 
     return exprEmissionStream.str();
 }
 
-string EmitFxSub(int stackIdx, string lhs, string rhs) {
+string EmitFxSub(int stackIdx, TEnvironment env, string lhs, string rhs) {
     ostringstream exprEmissionStream;
     // clang-format off
   exprEmissionStream
-      << EmitExpr(stackIdx, rhs)
+      << EmitExpr(stackIdx, env, rhs)
       << "    movl %eax, " << stackIdx << "(%rsp)\n"
-      << EmitExpr(stackIdx - WordSize, lhs)
+      << EmitExpr(stackIdx - WordSize, env, lhs)
       << "    subl " << stackIdx << "(%rsp), %eax\n";
     // clang-format on
 
     return exprEmissionStream.str();
 }
 
-string EmitFxMul(int stackIdx, string lhs, string rhs) {
+string EmitFxMul(int stackIdx, TEnvironment env, string lhs, string rhs) {
     ostringstream exprEmissionStream;
     // clang-format off
   exprEmissionStream
-      << EmitExpr(stackIdx, lhs)
+      << EmitExpr(stackIdx, env, lhs)
       << "    sarl $" << FxShift << ", %eax\n"
       << "    movl %eax, " << stackIdx << "(%rsp)\n"
-      << EmitExpr(stackIdx - WordSize, rhs)
+      << EmitExpr(stackIdx - WordSize, env, rhs)
       << "    imul " << stackIdx << "(%rsp), %eax\n";
     // clang-format on
 
     return exprEmissionStream.str();
 }
 
-string EmitFxLogOr(int stackIdx, string lhs, string rhs) {
+string EmitFxLogOr(int stackIdx, TEnvironment env, string lhs, string rhs) {
     ostringstream exprEmissionStream;
     // clang-format off
   exprEmissionStream
-      << EmitExpr(stackIdx, lhs)
+      << EmitExpr(stackIdx, env, lhs)
       << "    movl %eax, " << stackIdx << "(%rsp)\n"
-      << EmitExpr(stackIdx - WordSize, rhs)
+      << EmitExpr(stackIdx - WordSize, env, rhs)
       << "    or " << stackIdx << "(%rsp), %eax\n";
     // clang-format on
 
     return exprEmissionStream.str();
 }
 
-string EmitFxLogAnd(int stackIdx, string lhs, string rhs) {
+string EmitFxLogAnd(int stackIdx, TEnvironment env, string lhs, string rhs) {
     ostringstream exprEmissionStream;
     // clang-format off
   exprEmissionStream
-      << EmitExpr(stackIdx, lhs)
+      << EmitExpr(stackIdx, env, lhs)
       << "    movl %eax, " << stackIdx << "(%rsp)\n"
-      << EmitExpr(stackIdx - WordSize, rhs)
+      << EmitExpr(stackIdx - WordSize, env, rhs)
       << "    and " << stackIdx << "(%rsp), %eax\n";
     // clang-format on
 
     return exprEmissionStream.str();
 }
 
-string EmitFxCmp(int stackIdx, string lhs, string rhs, string setcc) {
+string EmitFxCmp(int stackIdx, TEnvironment env, string lhs, string rhs,
+                 string setcc) {
     ostringstream exprEmissionStream;
     // clang-format off
     exprEmissionStream
-      << EmitExpr(stackIdx, lhs)
+      << EmitExpr(stackIdx, env, lhs)
       << "    movl %eax, " << stackIdx << "(%rsp)\n"
-      << EmitExpr(stackIdx - WordSize, rhs)
+      << EmitExpr(stackIdx - WordSize, env, rhs)
       << "    cmpl  %eax, " << stackIdx << "(%rsp)\n"
       << "    " << setcc << " %al\n"
       << "    movzbl %al, %eax\n"
@@ -753,53 +773,55 @@ string EmitFxCmp(int stackIdx, string lhs, string rhs, string setcc) {
     return exprEmissionStream.str();
 }
 
-string EmitFxEq(int stackIdx, string lhs, string rhs) {
-    return EmitFxCmp(stackIdx, lhs, rhs, "sete");
+string EmitFxEq(int stackIdx, TEnvironment env, string lhs, string rhs) {
+    return EmitFxCmp(stackIdx, env, lhs, rhs, "sete");
 }
 
-string EmitFxLT(int stackIdx, string lhs, string rhs) {
-    return EmitFxCmp(stackIdx, lhs, rhs, "setl");
+string EmitFxLT(int stackIdx, TEnvironment env, string lhs, string rhs) {
+    return EmitFxCmp(stackIdx, env, lhs, rhs, "setl");
 }
 
-string EmitFxLE(int stackIdx, string lhs, string rhs) {
-    return EmitFxCmp(stackIdx, lhs, rhs, "setle");
+string EmitFxLE(int stackIdx, TEnvironment env, string lhs, string rhs) {
+    return EmitFxCmp(stackIdx, env, lhs, rhs, "setle");
 }
 
-string EmitFxGT(int stackIdx, string lhs, string rhs) {
-    return EmitFxCmp(stackIdx, lhs, rhs, "setg");
+string EmitFxGT(int stackIdx, TEnvironment env, string lhs, string rhs) {
+    return EmitFxCmp(stackIdx, env, lhs, rhs, "setg");
 }
 
-string EmitFxGE(int stackIdx, string lhs, string rhs) {
-    return EmitFxCmp(stackIdx, lhs, rhs, "setge");
+string EmitFxGE(int stackIdx, TEnvironment env, string lhs, string rhs) {
+    return EmitFxCmp(stackIdx, env, lhs, rhs, "setge");
 }
 
-string EmitIfExpr(int stackIdx, string cond, string conseq, string alt) {
+string EmitIfExpr(int stackIdx, TEnvironment env, string cond, string conseq,
+                  string alt) {
     string altLabel = UniqueLabel();
     string endLabel = UniqueLabel();
 
     ostringstream exprEmissionStream;
     // clang-format off
   exprEmissionStream
-      << EmitExpr(stackIdx, cond)
+      << EmitExpr(stackIdx, env, cond)
       << "    cmp $" << BoolF << ", %al\n"
       << "    je " << altLabel << "\n"
-      << EmitExpr(stackIdx, conseq)
+      << EmitExpr(stackIdx, env, conseq)
       << "    jmp " << endLabel << "\n"
       << altLabel << ":\n"
-      << EmitExpr(stackIdx, alt)
+      << EmitExpr(stackIdx, env, alt)
       << endLabel << ":\n";
     // clang-format on
 
     return exprEmissionStream.str();
 }
 
-string EmitLogicalExpr(int stackIdx, const vector<string> &args, bool isAnd) {
+string EmitLogicalExpr(int stackIdx, TEnvironment env,
+                       const vector<string> &args, bool isAnd) {
     ostringstream exprEmissionStream;
 
     if (args.size() == 0) {
-        exprEmissionStream << EmitExpr(stackIdx, "#t");
+        exprEmissionStream << EmitExpr(stackIdx, env, "#t");
     } else if (args.size() == 1) {
-        exprEmissionStream << EmitExpr(stackIdx, args[0]);
+        exprEmissionStream << EmitExpr(stackIdx, env, args[0]);
     } else {
         ostringstream newExpr;
         newExpr << "(" << (isAnd ? "and" : "or");
@@ -812,25 +834,56 @@ string EmitLogicalExpr(int stackIdx, const vector<string> &args, bool isAnd) {
 
         if (isAnd) {
             exprEmissionStream
-                << EmitIfExpr(stackIdx, args[0], newExpr.str(), "#f");
+                << EmitIfExpr(stackIdx, env, args[0], newExpr.str(), "#f");
         } else {
             exprEmissionStream
-                << EmitIfExpr(stackIdx, args[0], "#t", newExpr.str());
+                << EmitIfExpr(stackIdx, env, args[0], "#t", newExpr.str());
         }
     }
 
     return exprEmissionStream.str();
 }
 
-string EmitAndExpr(int stackIdx, const vector<string> &andArgs) {
-    return EmitLogicalExpr(stackIdx, andArgs, true);
+string EmitAndExpr(int stackIdx, TEnvironment env,
+                   const vector<string> &andArgs) {
+    return EmitLogicalExpr(stackIdx, env, andArgs, true);
 }
 
-string EmitOrExpr(int stackIdx, const vector<string> &orArgs) {
-    return EmitLogicalExpr(stackIdx, orArgs, false);
+string EmitOrExpr(int stackIdx, TEnvironment env,
+                  const vector<string> &orArgs) {
+    return EmitLogicalExpr(stackIdx, env, orArgs, false);
 }
 
-string EmitExpr(int stackIdx, string expr) {
+string EmitStackSave(int stackIdx) {
+    return "    movl %eax, " + to_string(stackIdx) + "(%rsp)\n";
+}
+
+string EmitLetExpr(int stackIdx, TEnvironment env, const TBindings &bindings,
+                   string letBody) {
+    ostringstream exprEmissionStream;
+    int si = stackIdx;
+    TEnvironment envExtension;
+
+    for (auto b : bindings) {
+        // clang-format off
+        exprEmissionStream
+            << EmitExpr(si, env, b.second)
+            << EmitStackSave(si);
+        // clang-format on
+        envExtension.insert({b.first, si});
+        si -= WordSize;
+    }
+
+    for (auto v : envExtension) {
+        env[v.first] = v.second;
+    }
+
+    exprEmissionStream << EmitExpr(si, env, letBody);
+
+    return exprEmissionStream.str();
+}
+
+string EmitExpr(int stackIdx, TEnvironment env, string expr) {
     assert(IsExpr(expr));
 
     if (IsImmediate(expr)) {
@@ -841,6 +894,10 @@ string EmitExpr(int stackIdx, string expr) {
         // clang-format on
 
         return exprEmissionStream.str();
+    }
+
+    if (IsVarName(expr)) {
+        return EmitVarRef(env, expr);
     }
 
     string primitiveName;
@@ -859,7 +916,7 @@ string EmitExpr(int stackIdx, string expr) {
             {"char?", EmitIsChar},
             {"not", EmitNot},
             {"fxlognot", EmitFxLogNot}};
-        return unaryEmitters[primitiveName](stackIdx, arg);
+        return unaryEmitters[primitiveName](stackIdx, env, arg);
     }
 
     vector<string> args;
@@ -873,26 +930,33 @@ string EmitExpr(int stackIdx, string expr) {
             {"fx<", EmitFxLT},          {"fx<=", EmitFxLE},
             {"fx>", EmitFxGT},          {"fx>=", EmitFxGE}};
         assert(binaryEmitters[primitiveName] != nullptr);
-        return binaryEmitters[primitiveName](stackIdx, args[0], args[1]);
+        return binaryEmitters[primitiveName](stackIdx, env, args[0], args[1]);
     }
 
     vector<string> ifParts;
 
     if (TryParseIfExpr(expr, &ifParts)) {
         assert(ifParts.size() == 3);
-        return EmitIfExpr(stackIdx, ifParts[0], ifParts[1], ifParts[2]);
+        return EmitIfExpr(stackIdx, env, ifParts[0], ifParts[1], ifParts[2]);
     }
 
     vector<string> andArgs;
 
     if (TryParseAndExpr(expr, &andArgs)) {
-        return EmitAndExpr(stackIdx, andArgs);
+        return EmitAndExpr(stackIdx, env, andArgs);
     }
 
     vector<string> orArgs;
 
     if (TryParseOrExpr(expr, &orArgs)) {
-        return EmitOrExpr(stackIdx, orArgs);
+        return EmitOrExpr(stackIdx, env, orArgs);
+    }
+
+    TBindings bindings;
+    string letBody;
+
+    if (TryParseLetExpr(expr, &bindings, &letBody)) {
+        return EmitLetExpr(stackIdx, env, bindings, letBody);
     }
 
     assert(false);
@@ -908,7 +972,7 @@ string EmitProgram(string programSource) {
       << "scheme_entry:\n"
       << "    movq %rsp, %rcx\n"
       << "    movq %rdi, %rsp\n"
-      << EmitExpr(-4, programSource)
+      << EmitExpr(-4, TEnvironment(), programSource)
       << "    movq %rcx, %rsp\n"
       << "    ret\n";
     // clang-format on
@@ -923,8 +987,7 @@ int main(int argc, char *argv[]) {
         "/home/ergawy/repos/inc-compiler/src/tests-1.3-req.scm",
         "/home/ergawy/repos/inc-compiler/src/tests-1.4-req.scm",
         "/home/ergawy/repos/inc-compiler/src/tests-1.5-req.scm",
-        //"/home/ergawy/repos/inc-compiler/src/tests-1.6-req.scm"
-    };
+        "/home/ergawy/repos/inc-compiler/src/tests-1.6-req.scm"};
 
     int testCaseCounter = 1;
     int failedTestCaseCounter = 0;
