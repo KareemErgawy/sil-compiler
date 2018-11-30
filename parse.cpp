@@ -267,6 +267,7 @@ bool TryParseOrExpr(string expr, vector<string> *outOrArgs) {
     return TryParseVariableNumOfSubExpr(expr, 3, outOrArgs);
 }
 
+template <typename TBindings>
 bool TryParseLetBindings(string expr, size_t *idx, TBindings *outBindings) {
     assert(idx != nullptr && *idx < expr.size());
 
@@ -336,7 +337,7 @@ bool TryParseLetBindings(string expr, size_t *idx, TBindings *outBindings) {
         }
 
         if (outBindings != nullptr) {
-            outBindings->insert({varName, varDef});
+            outBindings->insert(outBindings->end(), {varName, varDef});
         }
 
         --*idx;
@@ -380,7 +381,7 @@ bool TryParseLetExpr(string expr, TBindings *outBindings, string *outLetBody) {
            TryParseLetBody(expr, idx, outLetBody);
 }
 
-bool TryParseLetAsteriskExpr(string expr, TBindings *outBindings,
+bool TryParseLetAsteriskExpr(string expr, TOrderedBindings *outBindings,
                              string *outLetBody) {
     std::cout << expr << "\n";
     if (expr.size() < 6) {

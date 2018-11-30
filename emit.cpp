@@ -403,7 +403,7 @@ string EmitLetExpr(int stackIdx, TEnvironment env, const TBindings &bindings,
 }
 
 string EmitLetAsteriskExpr(int stackIdx, TEnvironment env,
-                           const TBindings &bindings, string letBody) {
+                           const TOrderedBindings &bindings, string letBody) {
     ostringstream exprEmissionStream;
     int si = stackIdx;
 
@@ -498,7 +498,7 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr) {
         return EmitLetExpr(stackIdx, env, bindings, letBody);
     }
 
-    TBindings bindings2;
+    TOrderedBindings bindings2;
     string letBody2;
 
     if (TryParseLetAsteriskExpr(expr, &bindings2, &letBody2)) {
