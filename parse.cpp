@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <sstream>
 
 using namespace std;
 
@@ -400,11 +401,130 @@ bool TryParseLetAsteriskExpr(string expr, TOrderedBindings *outBindings,
            TryParseLetBody(expr, idx, outLetBody);
 }
 
+bool TryParseLambdaExpr(string expr, vector<string> *outFormalArgs,
+                        string *outBody) {
+    if (expr.size() < 8) {
+        return false;
+    }
+
+    if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+        return false;
+    }
+
+    if (expr[1] != 'l' || expr[2] != 'a' || expr[3] != 'm' || expr[4] != 'b' ||
+        expr[5] != 'd' || expr[6] != 'a') {
+        return false;
+    }
+
+    size_t idx = 7;
+
+    if (SkipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
+        return false;
+    }
+
+    if (expr[idx] != '(') {
+        return false;
+    }
+
+    ++idx;
+
+    auto argListEnd = expr.find(')');
+
+    if (argListEnd == string::npos) {
+        return false;
+    }
+
+    istringstream formalArgReader(expr.substr(idx, argListEnd - idx));
+
+    while (!formalArgReader.eof()) {
+        string argName;
+        formalArgReader >> argName;
+
+        if (!IsVarName(argName)) {
+            return false;
+        }
+
+        if (outFormalArgs != nullptr) {
+            outFormalArgs->push_back(argName);
+        }
+    }
+
+    idx = ++argListEnd;
+
+    if (SkipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
+        return false;
+    }
+
+    auto body = expr.substr(idx, expr.size() - 1 - idx);
+
+    if (outBody != nullptr) {
+        *outBody = body;
+    }
+
+    return IsExpr(body);
+}
+
+bool TryParseProcCallExpr(string expr, string *outProcName,
+                          vector<string> *outParams) {
+    if (expr.size() < 3) {
+        return false;
+    }
+
+    if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+        return false;
+    }
+
+    size_t idx = 1;
+    auto separator = (expr.find(' ') == string::npos) ? ')' : ' ';
+
+    auto procName = expr.substr(idx, expr.find(separator) - idx);
+
+    if (!IsVarName(procName)) {
+        return false;
+    }
+
+    if (outProcName != nullptr) {
+        *outProcName = procName;
+    }
+
+    if (SkipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
+        if (outParams != nullptr) {
+            outParams->clear();
+        }
+
+        return true;
+    }
+
+    return TryParseVariableNumOfSubExpr(expr, idx, outParams);
+}
+
+bool TryParseLetrecExpr(string expr, TBindings *outBindings,
+                        string *outLetBody) {
+    if (expr.size() < 8) {
+        return false;
+    }
+
+    if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+        return false;
+    }
+
+    if (expr[1] != 'l' || expr[2] != 'e' || expr[3] != 't' || expr[4] != 'r' ||
+        expr[5] != 'e' || expr[6] != 'c') {
+        return false;
+    }
+
+    size_t idx = 7;
+
+    return TryParseLetBindings(expr, &idx, outBindings) &&
+           TryParseLetBody(expr, idx, outLetBody);
+}
+
 bool IsExpr(string expr) {
     return IsImmediate(expr) || IsVarName(expr) ||
            TryParseUnaryPrimitive(expr) || TryParseBinaryPrimitive(expr) ||
            TryParseIfExpr(expr) || TryParseAndExpr(expr) ||
            TryParseOrExpr(expr) || TryParseLetExpr(expr) ||
-           TryParseLetAsteriskExpr(expr);
+           TryParseLetAsteriskExpr(expr) || TryParseLambdaExpr(expr) ||
+           TryParseLetrecExpr(expr) || TryParseProcCallExpr(expr);
 }
 
