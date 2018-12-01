@@ -181,7 +181,7 @@ bool TryParseSubExpr(string expr, size_t subExprStart, string *outSubExpr,
     return IsExpr(subExpr);
 }
 
-bool skipSpaceAndCheckIfEndOfExpr(string expr, size_t *idx) {
+bool SkipSpaceAndCheckIfEndOfExpr(string expr, size_t *idx) {
     assert(*idx < expr.size());
 
     for (; *idx < (expr.size() - 1) && isspace(expr[*idx]); ++*idx) {
@@ -200,7 +200,7 @@ bool TryParseVariableNumOfSubExpr(string expr, size_t startIdx,
     size_t idx = startIdx;
     int numSubExprs = 0;
 
-    while (!skipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
+    while (!SkipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
         string *argPtr = nullptr;
 
         if (outSubExprs != nullptr) {
@@ -270,7 +270,7 @@ template <typename TBindings>
 bool TryParseLetBindings(string expr, size_t *idx, TBindings *outBindings) {
     assert(idx != nullptr && *idx < expr.size());
 
-    if (skipSpaceAndCheckIfEndOfExpr(expr, idx)) {
+    if (SkipSpaceAndCheckIfEndOfExpr(expr, idx)) {
         return false;
     }
 
@@ -286,7 +286,7 @@ bool TryParseLetBindings(string expr, size_t *idx, TBindings *outBindings) {
             break;
         }
 
-        if (skipSpaceAndCheckIfEndOfExpr(expr, idx)) {
+        if (SkipSpaceAndCheckIfEndOfExpr(expr, idx)) {
             return false;
         }
 
@@ -305,7 +305,7 @@ bool TryParseLetBindings(string expr, size_t *idx, TBindings *outBindings) {
         auto varName = expr.substr(*idx, varEnd - *idx);
         *idx = varEnd;
 
-        if (skipSpaceAndCheckIfEndOfExpr(expr, idx)) {
+        if (SkipSpaceAndCheckIfEndOfExpr(expr, idx)) {
             return false;
         }
 
@@ -348,7 +348,7 @@ bool TryParseLetBindings(string expr, size_t *idx, TBindings *outBindings) {
 }
 
 bool TryParseLetBody(string expr, size_t idx, string *outLetBody) {
-    if (skipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
+    if (SkipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
         return false;
     }
 
