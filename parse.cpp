@@ -401,8 +401,8 @@ bool TryParseLetAsteriskExpr(string expr, TOrderedBindings *outBindings,
            TryParseLetBody(expr, idx, outLetBody);
 }
 
-bool TryParseLambdaExpr(string expr, vector<string> *outFormalArgs,
-                        string *outBody) {
+bool TryParseLambda(string expr, vector<string> *outFormalArgs,
+                    string *outBody) {
     if (expr.size() < 8) {
         return false;
     }
@@ -498,8 +498,7 @@ bool TryParseProcCallExpr(string expr, string *outProcName,
     return TryParseVariableNumOfSubExpr(expr, idx, outParams);
 }
 
-bool TryParseLetrecExpr(string expr, TBindings *outBindings,
-                        string *outLetBody) {
+bool TryParseLetrec(string expr, TBindings *outBindings, string *outLetBody) {
     if (expr.size() < 8) {
         return false;
     }
@@ -524,7 +523,7 @@ bool IsExpr(string expr) {
            TryParseUnaryPrimitive(expr) || TryParseBinaryPrimitive(expr) ||
            TryParseIfExpr(expr) || TryParseAndExpr(expr) ||
            TryParseOrExpr(expr) || TryParseLetExpr(expr) ||
-           TryParseLetAsteriskExpr(expr) || TryParseLambdaExpr(expr) ||
-           TryParseLetrecExpr(expr) || TryParseProcCallExpr(expr);
+           TryParseLetAsteriskExpr(expr) || TryParseProcCallExpr(expr) ||
+           TryParseLambda(expr);
 }
 

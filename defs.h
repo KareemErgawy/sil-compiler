@@ -9,6 +9,7 @@
 using TBindings = std::unordered_map<std::string, std::string>;
 using TOrderedBindings = std::vector<std::pair<std::string, std::string>>;
 using TEnvironment = std::unordered_map<std::string, int>;
+using TLambdaTable = std::unordered_map<std::string, std::string>;
 
 using TUnaryPrimitiveEmitter = std::string (*)(int, TEnvironment, std::string);
 using TBinaryPrimitiveEmitter = std::string (*)(int, TEnvironment, std::string,

@@ -57,6 +57,6 @@ std::string EmitAndExpr(int stackIdx, TEnvironment env,
                         const std::vector<std::string> &andArgs);
 std::string EmitExpr(int stackIdx, TEnvironment env, std::string expr);
 std::string EmitProgram(std::string programSource);
-std::string UniqueLabel();
+std::string UniqueLabel(std::string prefix = "");
 
 #endif

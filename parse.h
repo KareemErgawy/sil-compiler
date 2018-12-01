@@ -35,13 +35,13 @@ bool TryParseLetExpr(std::string expr, TBindings *outBindings = nullptr,
 bool TryParseLetAsteriskExpr(std::string expr,
                              TOrderedBindings *outBindings = nullptr,
                              std::string *outLetBody = nullptr);
-bool TryParseLambdaExpr(std::string expr,
-                        std::vector<std::string> *outVars = nullptr,
-                        std::string *outBody = nullptr);
+bool TryParseLambda(std::string expr,
+                    std::vector<std::string> *outVars = nullptr,
+                    std::string *outBody = nullptr);
 bool TryParseProcCallExpr(std::string expr, std::string *outProcName = nullptr,
                           std::vector<std::string> *outParams = nullptr);
-bool TryParseLetrecExpr(std::string expr, TBindings *outBindings = nullptr,
-                        std::string *outLetBody = nullptr);
+bool TryParseLetrec(std::string expr, TBindings *outBindings = nullptr,
+                    std::string *outLetBody = nullptr);
 bool IsExpr(std::string expr);
 
 #endif

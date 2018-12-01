@@ -2,13 +2,14 @@
 #include "parse.h"
 
 #include <cassert>
+#include <iostream>
 #include <sstream>
 
 using namespace std;
 
-string UniqueLabel() {
+string UniqueLabel(string prefix) {
     static unsigned int count = 0;
-    return "L_" + to_string(count++);
+    return prefix + "_L_" + to_string(count++);
 }
 
 char TokenToChar(string token) {
@@ -422,6 +423,53 @@ string EmitLetAsteriskExpr(int stackIdx, TEnvironment env,
     return exprEmissionStream.str();
 }
 
+TLambdaTable CreateLambdaTable(const TBindings &lambdas) {
+    TLambdaTable result;
+    for (auto l : lambdas) {
+        result.insert({l.first, UniqueLabel()});
+    }
+
+    return result;
+}
+
+string EmitLambda(string lambdaLabel, string lambda) {
+    vector<string> formalArgs;
+    string body;
+
+    if (!TryParseLambda(lambda, &formalArgs, &body)) {
+        std::cerr << "Error trying to emit lambda.\n";
+        exit(1);
+    }
+
+    TEnvironment lambdaEnv;
+    auto stackIdx = -WordSize;
+
+    for (auto arg : formalArgs) {
+        lambdaEnv[arg] = stackIdx;
+        stackIdx -= WordSize;
+    }
+
+    ostringstream lambdaOS;
+    lambdaOS << "    .globl " << lambdaLabel << "\n"
+             << "    .type " << lambdaLabel << ", @function\n"
+             << lambdaLabel << ":\n"
+             << EmitExpr(stackIdx, lambdaEnv, body);
+
+    return lambdaOS.str();
+}
+
+string EmitLetrecLambdas(const TBindings &lambdas) {
+    auto lambdaTable = CreateLambdaTable(lambdas);
+    ostringstream allLambdasOS;
+
+    for (auto l : lambdas) {
+        allLambdasOS << EmitLambda(lambdaTable[l.first], l.second)
+                     << "    ret\n\n";
+    }
+
+    return allLambdasOS.str();
+}
+
 string EmitExpr(int stackIdx, TEnvironment env, string expr) {
     assert(IsExpr(expr));
 
@@ -505,23 +553,35 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr) {
         return EmitLetAsteriskExpr(stackIdx, env, bindings2, letBody2);
     }
 
+    if (TryParseProcCallExpr(expr)) {
+        // TODO Implement procedure calls.
+        return "";
+    }
+
     assert(false);
 }
 
 string EmitProgram(string programSource) {
     ostringstream programEmissionStream;
-    // clang-format off
-  programEmissionStream 
-      << "    .text\n"
-      << "    .globl scheme_entry\n"
-      << "    .type scheme_entry, @function\n"
-      << "scheme_entry:\n"
-      << "    movq %rsp, %rcx\n"
-      << "    movq %rdi, %rsp\n"
-      << EmitExpr(-4, TEnvironment(), programSource)
-      << "    movq %rcx, %rsp\n"
-      << "    ret\n";
-    // clang-format on
+    programEmissionStream << "    .text\n\n";
+
+    TBindings lambdas;
+    string progBody;
+
+    if (TryParseLetrec(programSource, &lambdas, &progBody)) {
+        programEmissionStream << EmitLetrecLambdas(lambdas);
+    } else {
+        progBody = programSource;
+    }
+
+    programEmissionStream << "    .globl scheme_entry\n"
+                          << "    .type scheme_entry, @function\n"
+                          << "scheme_entry:\n"
+                          << "    movq %rsp, %rcx\n"
+                          << "    movq %rdi, %rsp\n"
+                          << EmitExpr(-WordSize, TEnvironment(), progBody)
+                          << "    movq %rcx, %rsp\n"
+                          << "    ret\n";
 
     return programEmissionStream.str();
 }
