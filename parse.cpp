@@ -3,7 +3,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <iostream>
 
 using namespace std;
 
@@ -383,7 +382,6 @@ bool TryParseLetExpr(string expr, TBindings *outBindings, string *outLetBody) {
 
 bool TryParseLetAsteriskExpr(string expr, TOrderedBindings *outBindings,
                              string *outLetBody) {
-    std::cout << expr << "\n";
     if (expr.size() < 6) {
         return false;
     }
