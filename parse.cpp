@@ -487,6 +487,7 @@ bool TryParseProcCallExpr(string expr, string *outProcName,
         *outProcName = procName;
     }
 
+    ++idx;
     if (SkipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
         if (outParams != nullptr) {
             outParams->clear();

@@ -428,9 +428,24 @@ static TLambdaTable gLambdaTable;
 string EmitProcCall(int stackIdx, TEnvironment env, string procName,
                     vector<string> params) {
     ostringstream callOS;
-    callOS << "    addq $" << (stackIdx - WordSize) << ", %rsp\n"
+    // Leave room to store the return address on the stack.
+    auto paramStackIdx = stackIdx - (WordSize * 2);
+
+    for (auto p : params) {
+        callOS << EmitExpr(paramStackIdx, env, p)
+               << EmitStackSave(paramStackIdx);
+        paramStackIdx -= WordSize;
+    }
+
+    // 1 - Adjust the stack index to point to its top element (instead of
+    // pointing to the next empty slot on the stack).
+    //
+    // 2 - Call the procedure.
+    //
+    // 3 - Adjust the stack index back.
+    callOS << "    addq $" << (stackIdx + WordSize) << ", %rsp\n"
            << "    call " << gLambdaTable[procName] << "\n"
-           << "    subq $" << (stackIdx - WordSize) << ", %rsp\n";
+           << "    subq $" << (stackIdx + WordSize) << ", %rsp\n";
 
     return callOS.str();
 }
