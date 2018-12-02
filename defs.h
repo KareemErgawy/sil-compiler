@@ -32,7 +32,7 @@ const unsigned int CharShift = 8;
 const unsigned int CharMask = 0xFF;
 const unsigned int CharTag = 0x0F;
 
-const unsigned int WordSize = 4;
+const int WordSize = 4;
 
 const unsigned int FixNumBits = WordSize * 8 - FxShift;
 const int FxLower = -pow(2, FixNumBits - 1);

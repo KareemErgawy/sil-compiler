@@ -423,13 +423,22 @@ string EmitLetAsteriskExpr(int stackIdx, TEnvironment env,
     return exprEmissionStream.str();
 }
 
-TLambdaTable CreateLambdaTable(const TBindings &lambdas) {
-    TLambdaTable result;
-    for (auto l : lambdas) {
-        result.insert({l.first, UniqueLabel()});
-    }
+static TLambdaTable gLambdaTable;
 
-    return result;
+string EmitProcCall(int stackIdx, TEnvironment env, string procName,
+                    vector<string> params) {
+    ostringstream callOS;
+    callOS << "    addq $" << (stackIdx - WordSize) << ", %rsp\n"
+           << "    call " << gLambdaTable[procName] << "\n"
+           << "    subq $" << (stackIdx - WordSize) << ", %rsp\n";
+
+    return callOS.str();
+}
+
+void CreateLambdaTable(const TBindings &lambdas) {
+    for (auto l : lambdas) {
+        gLambdaTable.insert({l.first, UniqueLabel(l.first)});
+    }
 }
 
 string EmitLambda(string lambdaLabel, string lambda) {
@@ -459,11 +468,11 @@ string EmitLambda(string lambdaLabel, string lambda) {
 }
 
 string EmitLetrecLambdas(const TBindings &lambdas) {
-    auto lambdaTable = CreateLambdaTable(lambdas);
+    CreateLambdaTable(lambdas);
     ostringstream allLambdasOS;
 
     for (auto l : lambdas) {
-        allLambdasOS << EmitLambda(lambdaTable[l.first], l.second)
+        allLambdasOS << EmitLambda(gLambdaTable[l.first], l.second)
                      << "    ret\n\n";
     }
 
@@ -553,9 +562,11 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr) {
         return EmitLetAsteriskExpr(stackIdx, env, bindings2, letBody2);
     }
 
-    if (TryParseProcCallExpr(expr)) {
-        // TODO Implement procedure calls.
-        return "";
+    string procName;
+    vector<string> params;
+
+    if (TryParseProcCallExpr(expr, &procName, &params)) {
+        return EmitProcCall(stackIdx, env, procName, params);
     }
 
     assert(false);
