@@ -415,8 +415,8 @@ string EmitLetAsteriskExpr(int stackIdx, TEnvironment env,
 
 static TLambdaTable gLambdaTable;
 
-string EmitProcCall(int stackIdx, TEnvironment env, string procName,
-                    vector<string> params) {
+string EmitSaveProcParamsOnStack(int stackIdx, TEnvironment env,
+                                 vector<string> params) {
     ostringstream callOS;
     // Leave room to store the return address on the stack.
     auto paramStackIdx = stackIdx - (WordSize * 2);
@@ -427,6 +427,14 @@ string EmitProcCall(int stackIdx, TEnvironment env, string procName,
         paramStackIdx -= WordSize;
     }
 
+    return callOS.str();
+}
+
+string EmitProcCall(int stackIdx, TEnvironment env, string procName,
+                    vector<string> params) {
+    ostringstream callOS;
+    callOS << EmitSaveProcParamsOnStack(stackIdx, env, params);
+
     // 1 - Adjust the base pointer to the current top of the stack.
     //
     // 2 - Call the procedure.
@@ -435,6 +443,25 @@ string EmitProcCall(int stackIdx, TEnvironment env, string procName,
     callOS << "    addq $" << (stackIdx + WordSize) << ", %rsp\n"
            << "    call " << gLambdaTable[procName] << "\n"
            << "    subq $" << (stackIdx + WordSize) << ", %rsp\n";
+
+    return callOS.str();
+}
+
+string EmitTailProcCall(int stackIdx, TEnvironment env, string procName,
+                        vector<string> params) {
+    ostringstream callOS;
+    callOS << EmitSaveProcParamsOnStack(stackIdx, env, params);
+    auto oldParamStackIdx = stackIdx - (WordSize * 2);
+    auto newParamStackIdx = -WordSize;
+
+    for (auto p : params) {
+        callOS << "    movl " << oldParamStackIdx << "(%rsp), %eax\n"
+               << "    movl %eax, " << newParamStackIdx << "(%rsp)\n";
+        oldParamStackIdx -= WordSize;
+        newParamStackIdx -= WordSize;
+    }
+
+    callOS << "    jmp " << gLambdaTable[procName] << "\n";
 
     return callOS.str();
 }
@@ -466,7 +493,7 @@ string EmitLambda(string lambdaLabel, string lambda) {
     lambdaOS << "    .globl " << lambdaLabel << "\n"
              << "    .type " << lambdaLabel << ", @function\n"
              << lambdaLabel << ":\n"
-             << EmitExpr(stackIdx, lambdaEnv, body);
+             << EmitExpr(stackIdx, lambdaEnv, body, /* isTail */ true);
 
     return lambdaOS.str();
 }
@@ -570,7 +597,11 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
     vector<string> params;
 
     if (TryParseProcCallExpr(expr, &procName, &params)) {
-        return EmitProcCall(stackIdx, env, procName, params);
+        if (isTail) {
+            return EmitTailProcCall(stackIdx, env, procName, params);
+        } else {
+            return EmitProcCall(stackIdx, env, procName, params);
+        }
     }
 
     assert(false);
