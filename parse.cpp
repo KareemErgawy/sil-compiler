@@ -108,41 +108,9 @@ bool TryParseUnaryPrimitive(string expr, string *outPrimitiveName,
     return IsExpr(arg);
 }
 
-bool TryParseBinaryPrimitive(string expr, string *outPrimitiveName,
-                             vector<string> *outArgs) {
-    if (expr.size() < 3) {
-        return false;
-    }
-
-    if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
-        return false;
-    }
-
-    static vector<string> binaryPrimitiveNames{
-        "fx+", "fx-", "fx*",  "fxlogor", "fxlogand",
-        "fx=", "fx<", "fx<=", "fx>",     "fx>="};
-
-    string primitiveName = "";
-    size_t idx;
-
-    for (idx = 1; idx < (expr.size() - 1) && !isspace(expr[idx]); ++idx) {
-        primitiveName = primitiveName + expr[idx];
-    }
-
-    if (find(binaryPrimitiveNames.begin(), binaryPrimitiveNames.end(),
-             primitiveName) == binaryPrimitiveNames.end()) {
-        return false;
-    }
-
-    if (outPrimitiveName != nullptr) {
-        *outPrimitiveName = primitiveName;
-    }
-
-    return TryParseVariableNumOfSubExpr(expr, idx, outArgs, 2);
-}
-
-bool TryParseSubExpr(string expr, size_t subExprStart, string *outSubExpr,
-                     size_t *outSubExprEnd) {
+bool TryParseSubExpr(string expr, size_t subExprStart,
+                     string *outSubExpr = nullptr,
+                     size_t *outSubExprEnd = nullptr) {
     // The (- 1) accounts for the closing ) of expr.
     assert(subExprStart < expr.size() - 1);
 
@@ -193,7 +161,7 @@ bool SkipSpaceAndCheckIfEndOfExpr(string expr, size_t *idx) {
 
 bool TryParseVariableNumOfSubExpr(string expr, size_t startIdx,
                                   vector<string> *outSubExprs,
-                                  int expectedNumSubExprs) {
+                                  int expectedNumSubExprs = -1) {
     if (outSubExprs != nullptr) {
         outSubExprs->clear();
     }
@@ -217,6 +185,39 @@ bool TryParseVariableNumOfSubExpr(string expr, size_t startIdx,
     }
 
     return (expectedNumSubExprs == -1) || (expectedNumSubExprs == numSubExprs);
+}
+
+bool TryParseBinaryPrimitive(string expr, string *outPrimitiveName,
+                             vector<string> *outArgs) {
+    if (expr.size() < 3) {
+        return false;
+    }
+
+    if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+        return false;
+    }
+
+    static vector<string> binaryPrimitiveNames{
+        "fx+", "fx-", "fx*",  "fxlogor", "fxlogand",
+        "fx=", "fx<", "fx<=", "fx>",     "fx>="};
+
+    string primitiveName = "";
+    size_t idx;
+
+    for (idx = 1; idx < (expr.size() - 1) && !isspace(expr[idx]); ++idx) {
+        primitiveName = primitiveName + expr[idx];
+    }
+
+    if (find(binaryPrimitiveNames.begin(), binaryPrimitiveNames.end(),
+             primitiveName) == binaryPrimitiveNames.end()) {
+        return false;
+    }
+
+    if (outPrimitiveName != nullptr) {
+        *outPrimitiveName = primitiveName;
+    }
+
+    return TryParseVariableNumOfSubExpr(expr, idx, outArgs, 2);
 }
 
 bool TryParseIfExpr(string expr, vector<string> *outIfParts) {

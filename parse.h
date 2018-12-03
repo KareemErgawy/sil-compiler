@@ -18,12 +18,6 @@ bool TryParseUnaryPrimitive(std::string expr,
 bool TryParseBinaryPrimitive(std::string expr,
                              std::string *outPrimitiveName = nullptr,
                              std::vector<std::string> *outArgs = nullptr);
-bool TryParseSubExpr(std::string expr, size_t subExprStart,
-                     std::string *subExpr = nullptr,
-                     size_t *subExprEnd = nullptr);
-bool TryParseVariableNumOfSubExpr(std::string expr, size_t startIdx,
-                                  std::vector<std::string> *outSubExprs,
-                                  int expectedNumSubExprs = -1);
 bool TryParseIfExpr(std::string expr,
                     std::vector<std::string> *outIfParts = nullptr);
 bool TryParseAndExpr(std::string expr,

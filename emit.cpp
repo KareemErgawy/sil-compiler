@@ -7,7 +7,10 @@
 
 using namespace std;
 
-string UniqueLabel(string prefix) {
+string EmitExpr(int stackIdx, TEnvironment env, string expr,
+                bool isTail = false);
+
+string UniqueLabel(string prefix = "") {
     static unsigned int count = 0;
     return prefix + "_L_" + to_string(count++);
 }
@@ -50,6 +53,7 @@ int ImmediateRep(string token) {
     }
 
     // Else, must be fixnum.
+    assert(IsFixNum(token));
     return (stoi(token) << FxShift) | FxTag;
 }
 
@@ -73,12 +77,12 @@ string EmitFxAddImmediate(int stackIdx, TEnvironment env, string fxAddArg,
 
 string EmitFxAdd1(int stackIdx, TEnvironment env, string fxAdd1Arg,
                   bool isTail) {
-    return EmitFxAddImmediate(stackIdx, env, fxAdd1Arg, "1");
+    return EmitFxAddImmediate(stackIdx, env, fxAdd1Arg, "1", isTail);
 }
 
 string EmitFxSub1(int stackIdx, TEnvironment env, string fxSub1Arg,
                   bool isTail) {
-    return EmitFxAddImmediate(stackIdx, env, fxSub1Arg, "-1");
+    return EmitFxAddImmediate(stackIdx, env, fxSub1Arg, "-1", isTail);
 }
 
 string EmitFixNumToChar(int stackIdx, TEnvironment env, string fixNumToCharArg,
