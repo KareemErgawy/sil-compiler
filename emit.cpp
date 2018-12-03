@@ -301,22 +301,26 @@ string EmitFxGE(int stackIdx, TEnvironment env, string lhs, string rhs,
 }
 
 string EmitIfExpr(int stackIdx, TEnvironment env, string cond, string conseq,
-                  string alt) {
+                  string alt, bool isTail) {
     string altLabel = UniqueLabel();
     string endLabel = UniqueLabel();
 
     ostringstream exprEmissionStream;
-    // clang-format off
-  exprEmissionStream
-      << EmitExpr(stackIdx, env, cond)
-      << "    cmp $" << BoolF << ", %al\n"
-      << "    je " << altLabel << "\n"
-      << EmitExpr(stackIdx, env, conseq)
-      << "    jmp " << endLabel << "\n"
-      << altLabel << ":\n"
-      << EmitExpr(stackIdx, env, alt)
-      << endLabel << ":\n";
-    // clang-format on
+    exprEmissionStream << EmitExpr(stackIdx, env, cond)
+
+                       << "    cmp $" << BoolF << ", %al\n"
+
+                       << "    je " << altLabel << "\n"
+
+                       << EmitExpr(stackIdx, env, conseq, isTail)
+
+                       << "    jmp " << endLabel << "\n"
+
+                       << altLabel << ":\n"
+
+                       << EmitExpr(stackIdx, env, alt, isTail)
+
+                       << endLabel << ":\n";
 
     return exprEmissionStream.str();
 }
@@ -366,17 +370,15 @@ string EmitStackSave(int stackIdx) {
 }
 
 string EmitLetExpr(int stackIdx, TEnvironment env, const TBindings &bindings,
-                   string letBody) {
+                   string letBody, bool isTail) {
     ostringstream exprEmissionStream;
     int si = stackIdx;
     TEnvironment envExtension;
 
     for (auto b : bindings) {
-        // clang-format off
-        exprEmissionStream
-            << EmitExpr(si, env, b.second)
-            << EmitStackSave(si);
-        // clang-format on
+        exprEmissionStream << EmitExpr(si, env, b.second)
+
+                           << EmitStackSave(si);
         envExtension.insert({b.first, si});
         si -= WordSize;
     }
@@ -385,13 +387,14 @@ string EmitLetExpr(int stackIdx, TEnvironment env, const TBindings &bindings,
         env[v.first] = v.second;
     }
 
-    exprEmissionStream << EmitExpr(si, env, letBody);
+    exprEmissionStream << EmitExpr(si, env, letBody, isTail);
 
     return exprEmissionStream.str();
 }
 
 string EmitLetAsteriskExpr(int stackIdx, TEnvironment env,
-                           const TOrderedBindings &bindings, string letBody) {
+                           const TOrderedBindings &bindings, string letBody,
+                           bool isTail) {
     ostringstream exprEmissionStream;
     int si = stackIdx;
 
@@ -405,7 +408,7 @@ string EmitLetAsteriskExpr(int stackIdx, TEnvironment env,
         si -= WordSize;
     }
 
-    exprEmissionStream << EmitExpr(si, env, letBody);
+    exprEmissionStream << EmitExpr(si, env, letBody, isTail);
 
     return exprEmissionStream.str();
 }
@@ -534,7 +537,8 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
 
     if (TryParseIfExpr(expr, &ifParts)) {
         assert(ifParts.size() == 3);
-        return EmitIfExpr(stackIdx, env, ifParts[0], ifParts[1], ifParts[2]);
+        return EmitIfExpr(stackIdx, env, ifParts[0], ifParts[1], ifParts[2],
+                          isTail);
     }
 
     vector<string> andArgs;
@@ -553,14 +557,14 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
     string letBody;
 
     if (TryParseLetExpr(expr, &bindings, &letBody)) {
-        return EmitLetExpr(stackIdx, env, bindings, letBody);
+        return EmitLetExpr(stackIdx, env, bindings, letBody, isTail);
     }
 
     TOrderedBindings bindings2;
     string letBody2;
 
     if (TryParseLetAsteriskExpr(expr, &bindings2, &letBody2)) {
-        return EmitLetAsteriskExpr(stackIdx, env, bindings2, letBody2);
+        return EmitLetAsteriskExpr(stackIdx, env, bindings2, letBody2, isTail);
     }
 
     string procName;

@@ -57,9 +57,16 @@ std::string EmitFxGT(int stackIdx, TEnvironment env, std::string lhs,
 std::string EmitFxGE(int stackIdx, TEnvironment env, std::string lhs,
                      std::string rhs, bool isTail);
 std::string EmitIfExpr(int stackIdx, TEnvironment env, std::string cond,
-                       std::string conseq, std::string alt);
+                       std::string conseq, std::string alt,
+                       bool isTail = false);
 std::string EmitAndExpr(int stackIdx, TEnvironment env,
                         const std::vector<std::string> &andArgs);
+std::string EmitLetExpr(int stackIdx, TEnvironment env,
+                        const TBindings &bindings, std::string letBody,
+                        bool isTail);
+std::string EmitLetAsteriskExpr(int stackIdx, TEnvironment env,
+                                const TOrderedBindings &bindings,
+                                std::string letBody, bool isTail);
 std::string EmitExpr(int stackIdx, TEnvironment env, std::string expr,
                      bool isTail = false);
 std::string EmitProgram(std::string programSource);
