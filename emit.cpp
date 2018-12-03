@@ -326,13 +326,13 @@ string EmitIfExpr(int stackIdx, TEnvironment env, string cond, string conseq,
 }
 
 string EmitLogicalExpr(int stackIdx, TEnvironment env,
-                       const vector<string> &args, bool isAnd) {
+                       const vector<string> &args, bool isAnd, bool isTail) {
     ostringstream exprEmissionStream;
 
     if (args.size() == 0) {
-        exprEmissionStream << EmitExpr(stackIdx, env, "#t");
+        exprEmissionStream << EmitExpr(stackIdx, env, "#t", isTail);
     } else if (args.size() == 1) {
-        exprEmissionStream << EmitExpr(stackIdx, env, args[0]);
+        exprEmissionStream << EmitExpr(stackIdx, env, args[0], isTail);
     } else {
         ostringstream newExpr;
         newExpr << "(" << (isAnd ? "and" : "or");
@@ -344,11 +344,11 @@ string EmitLogicalExpr(int stackIdx, TEnvironment env,
         newExpr << ")";
 
         if (isAnd) {
-            exprEmissionStream
-                << EmitIfExpr(stackIdx, env, args[0], newExpr.str(), "#f");
+            exprEmissionStream << EmitIfExpr(stackIdx, env, args[0],
+                                             newExpr.str(), "#f", isTail);
         } else {
-            exprEmissionStream
-                << EmitIfExpr(stackIdx, env, args[0], "#t", newExpr.str());
+            exprEmissionStream << EmitIfExpr(stackIdx, env, args[0], "#t",
+                                             newExpr.str(), isTail);
         }
     }
 
@@ -356,13 +356,13 @@ string EmitLogicalExpr(int stackIdx, TEnvironment env,
 }
 
 string EmitAndExpr(int stackIdx, TEnvironment env,
-                   const vector<string> &andArgs) {
-    return EmitLogicalExpr(stackIdx, env, andArgs, true);
+                   const vector<string> &andArgs, bool isTail) {
+    return EmitLogicalExpr(stackIdx, env, andArgs, true, isTail);
 }
 
-string EmitOrExpr(int stackIdx, TEnvironment env,
-                  const vector<string> &orArgs) {
-    return EmitLogicalExpr(stackIdx, env, orArgs, false);
+string EmitOrExpr(int stackIdx, TEnvironment env, const vector<string> &orArgs,
+                  bool isTail) {
+    return EmitLogicalExpr(stackIdx, env, orArgs, false, isTail);
 }
 
 string EmitStackSave(int stackIdx) {
@@ -544,13 +544,13 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
     vector<string> andArgs;
 
     if (TryParseAndExpr(expr, &andArgs)) {
-        return EmitAndExpr(stackIdx, env, andArgs);
+        return EmitAndExpr(stackIdx, env, andArgs, isTail);
     }
 
     vector<string> orArgs;
 
     if (TryParseOrExpr(expr, &orArgs)) {
-        return EmitOrExpr(stackIdx, env, orArgs);
+        return EmitOrExpr(stackIdx, env, orArgs, isTail);
     }
 
     TBindings bindings;

@@ -60,7 +60,10 @@ std::string EmitIfExpr(int stackIdx, TEnvironment env, std::string cond,
                        std::string conseq, std::string alt,
                        bool isTail = false);
 std::string EmitAndExpr(int stackIdx, TEnvironment env,
-                        const std::vector<std::string> &andArgs);
+                        const std::vector<std::string> &andArgs, bool isTail);
+std::string EmitOrExpr(int stackIdx, TEnvironment env,
+                       const std::vector<std::string> &andArgs, bool isTail);
+
 std::string EmitLetExpr(int stackIdx, TEnvironment env,
                         const TBindings &bindings, std::string letBody,
                         bool isTail);
