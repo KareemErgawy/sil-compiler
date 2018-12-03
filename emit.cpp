@@ -427,12 +427,11 @@ string EmitProcCall(int stackIdx, TEnvironment env, string procName,
         paramStackIdx -= WordSize;
     }
 
-    // 1 - Adjust the stack index to point to its top element (instead of
-    // pointing to the next empty slot on the stack).
+    // 1 - Adjust the base pointer to the current top of the stack.
     //
     // 2 - Call the procedure.
     //
-    // 3 - Adjust the stack index back.
+    // 3 - Adjust the pointer to its original place before the call.
     callOS << "    addq $" << (stackIdx + WordSize) << ", %rsp\n"
            << "    call " << gLambdaTable[procName] << "\n"
            << "    subq $" << (stackIdx + WordSize) << ", %rsp\n";
