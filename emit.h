@@ -10,52 +10,58 @@ char TokenToChar(std::string token);
 int ImmediateRep(std::string token);
 
 std::string EmitFxAddImmediate(int stackIdx, TEnvironment env,
-                               std::string fxAddArg,
-                               std::string fxAddImmediate);
-std::string EmitFxAdd1(int stackIdx, TEnvironment env, std::string fxAdd1Arg);
-std::string EmitFxSub1(int stackIdx, TEnvironment env, std::string fxSub1Arg);
+                               std::string fxAddArg, std::string fxAddImmediate,
+                               bool isTail = false);
+std::string EmitFxAdd1(int stackIdx, TEnvironment env, std::string fxAdd1Arg,
+                       bool isTail);
+std::string EmitFxSub1(int stackIdx, TEnvironment env, std::string fxSub1Arg,
+                       bool isTail);
 std::string EmitFixNumToChar(int stackIdx, TEnvironment env,
-                             std::string fixNumToCharArg);
+                             std::string fixNumToCharArg, bool isTail);
 std::string EmitCharToFixNum(int stackIdx, TEnvironment env,
-                             std::string fixNumToCharArg);
+                             std::string fixNumToCharArg, bool isTail);
 std::string EmitIsFixNum(int stackIdx, TEnvironment env,
-                         std::string isFixNumArg);
+                         std::string isFixNumArg, bool isTail);
 std::string EmitIsFxZero(int stackIdx, TEnvironment env,
-                         std::string isFxZeroArg);
-std::string EmitIsNull(int stackIdx, TEnvironment env, std::string isNullArg);
+                         std::string isFxZeroArg, bool isTail);
+std::string EmitIsNull(int stackIdx, TEnvironment env, std::string isNullArg,
+                       bool isTail);
 std::string EmitIsBoolean(int stackIdx, TEnvironment env,
-                          std::string isBooleanArg);
-std::string EmitIsChar(int stackIdx, TEnvironment env, std::string isCharArg);
-std::string EmitNot(int stackIdx, TEnvironment env, std::string notArg);
+                          std::string isBooleanArg, bool isTail);
+std::string EmitIsChar(int stackIdx, TEnvironment env, std::string isCharArg,
+                       bool isTail);
+std::string EmitNot(int stackIdx, TEnvironment env, std::string notArg,
+                    bool isTail);
 std::string EmitFxLogNot(int stackIdx, TEnvironment env,
-                         std::string fxLogNotArg);
+                         std::string fxLogNotArg, bool isTail);
 std::string EmitFxAdd(int stackIdx, TEnvironment env, std::string lhs,
-                      std::string rhs);
+                      std::string rhs, bool isTail);
 std::string EmitFxSub(int stackIdx, TEnvironment env, std::string lhs,
-                      std::string rhs);
+                      std::string rhs, bool isTail);
 std::string EmitFxMul(int stackIdx, TEnvironment env, std::string lhs,
-                      std::string rhs);
+                      std::string rhs, bool isTail);
 std::string EmitFxLogOr(int stackIdx, TEnvironment env, std::string lhs,
-                        std::string rhs);
+                        std::string rhs, bool isTail);
 std::string EmitFxLogAnd(int stackIdx, TEnvironment env, std::string lhs,
-                         std::string rhs);
+                         std::string rhs, bool isTail);
 std::string EmitFxCmp(int stackIdx, TEnvironment env, std::string lhs,
-                      std::string rhs, std::string setcc);
+                      std::string rhs, std::string setcc, bool isTail);
 std::string EmitFxEq(int stackIdx, TEnvironment env, std::string lhs,
-                     std::string rhs);
+                     std::string rhs, bool isTail);
 std::string EmitFxLT(int stackIdx, TEnvironment env, std::string lhs,
-                     std::string rhs);
+                     std::string rhs, bool isTail);
 std::string EmitFxLE(int stackIdx, TEnvironment env, std::string lhs,
-                     std::string rhs);
+                     std::string rhs, bool isTail);
 std::string EmitFxGT(int stackIdx, TEnvironment env, std::string lhs,
-                     std::string rhs);
+                     std::string rhs, bool isTail);
 std::string EmitFxGE(int stackIdx, TEnvironment env, std::string lhs,
-                     std::string rhs);
+                     std::string rhs, bool isTail);
 std::string EmitIfExpr(int stackIdx, TEnvironment env, std::string cond,
                        std::string conseq, std::string alt);
 std::string EmitAndExpr(int stackIdx, TEnvironment env,
                         const std::vector<std::string> &andArgs);
-std::string EmitExpr(int stackIdx, TEnvironment env, std::string expr);
+std::string EmitExpr(int stackIdx, TEnvironment env, std::string expr,
+                     bool isTail = false);
 std::string EmitProgram(std::string programSource);
 std::string UniqueLabel(std::string prefix = "");
 
