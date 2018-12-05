@@ -1,5 +1,6 @@
 #include "defs.h"
 #include "emit.h"
+#include "parse.h"
 
 #include <array>
 #include <cassert>
@@ -43,7 +44,8 @@ int main(int argc, char *argv[]) {
         "/home/ergawy/repos/inc-compiler/src/tests-1.6-req.scm",
         "/home/ergawy/repos/inc-compiler/src/tests-1.6-opt.scm",
         "/home/ergawy/repos/inc-compiler/src/tests-1.7-req.scm",
-        "/home/ergawy/repos/inc-compiler/src/tests-1.8-req.scm"};
+        "/home/ergawy/repos/inc-compiler/src/tests-1.8-req.scm",
+        "/home/ergawy/repos/inc-compiler/src/tests-1.9.1-req.scm"};
 
     int testCaseCounter = 1;
     int failedTestCaseCounter = 0;

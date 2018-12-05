@@ -304,6 +304,49 @@ string EmitFxGE(int stackIdx, TEnvironment env, string lhs, string rhs,
     return EmitFxCmp(stackIdx, env, lhs, rhs, "setge", isTail);
 }
 
+string EmitCons(int stackIdx, TEnvironment env, string first, string second,
+                bool isTail) {
+    ostringstream exprOS;
+
+    // TODO Since we compute pointers now, move to 64-bit representation for
+    // everything else.
+    exprOS << EmitExpr(stackIdx, env, first)
+           << "    movl %eax, (%rbp)\n"  // Store car at the next avaiable heap
+                                         // pointer.
+           << EmitExpr(stackIdx, env, second)
+           << "    movl %eax, 4(%rbp)\n"  // Store cdr a word after car.
+           << "    addq $8, %rbp\n"       // Move the heap forward by pair size.
+           << "    movl %ebp, %eax\n"     // Store the pair pointer into %eax.
+           << "    orl $" << PairTag << ", %eax\n"
+           << (isTail ? "ret\n" : "");
+
+    return exprOS.str();
+}
+
+string EmitIsPair(int stackIdx, TEnvironment env, string isPairArg,
+                  bool isTail) {
+    ostringstream exprOS;
+
+    // TODO Reduce code duplication in this other xxx? primitives.
+    exprOS << EmitExpr(stackIdx, env, isPairArg)
+
+           << "    and $" << PairMask << ", %al\n"
+
+           << "    cmp $" << PairTag << ", %al\n"
+
+           << "    sete %al\n"
+
+           << "    movzbl %al, %eax\n"
+
+           << "    sal $" << BoolBit << ", %al\n"
+
+           << "    or $" << BoolF << ", %al\n"
+
+           << (isTail ? "ret\n" : "");
+
+    return exprOS.str();
+}
+
 string EmitIfExpr(int stackIdx, TEnvironment env, string cond, string conseq,
                   string alt, bool isTail) {
     string altLabel = UniqueLabel();
@@ -544,7 +587,9 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
             {"boolean?", EmitIsBoolean},
             {"char?", EmitIsChar},
             {"not", EmitNot},
-            {"fxlognot", EmitFxLogNot}};
+            {"fxlognot", EmitFxLogNot},
+            {"pair?", EmitIsPair}};
+        assert(unaryEmitters[primitiveName] != nullptr);
         return unaryEmitters[primitiveName](stackIdx, env, arg, isTail);
     }
 
@@ -557,7 +602,8 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
             {"fx*", EmitFxMul},         {"fxlogor", EmitFxLogOr},
             {"fxlogand", EmitFxLogAnd}, {"fx=", EmitFxEq},
             {"fx<", EmitFxLT},          {"fx<=", EmitFxLE},
-            {"fx>", EmitFxGT},          {"fx>=", EmitFxGE}};
+            {"fx>", EmitFxGT},          {"fx>=", EmitFxGE},
+            {"cons", EmitCons}};
         assert(binaryEmitters[primitiveName] != nullptr);
         return binaryEmitters[primitiveName](stackIdx, env, args[0], args[1],
                                              isTail);
