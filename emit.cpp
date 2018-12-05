@@ -624,14 +624,24 @@ string EmitProgram(string programSource) {
         progBody = programSource;
     }
 
-    programEmissionStream << "    .globl scheme_entry\n"
-                          << "    .type scheme_entry, @function\n"
-                          << "scheme_entry:\n"
-                          << "    movq %rsp, %rcx\n"
-                          << "    movq %rdi, %rsp\n"
-                          << EmitExpr(-WordSize, TEnvironment(), progBody)
-                          << "    movq %rcx, %rsp\n"
-                          << "    ret\n";
+    programEmissionStream
+        << "    .globl scheme_entry\n"
+        << "    .type scheme_entry, @function\n"
+        << "scheme_entry:\n"
+        << "    movq %rdi, %rcx\n"  // Load context* into %rcx.
+        << "    movq %rbx, 8(%rcx)\n"
+        << "    movq %rsi, 32(%rcx)\n"
+        << "    movq %rdi, 40(%rcx)\n"
+        << "    movq %rbp, 48(%rcx)\n"
+        << "    movq %rsp, 56(%rcx)\n"
+        << "    movq %rsi, %rsp\n"  // Load stack space pointer into %rsp.
+        << EmitExpr(-WordSize, TEnvironment(), progBody)
+        << "    movq 8(%rcx), %rbx\n"
+        << "    movq 32(%rcx), %rsi\n"
+        << "    movq 40(%rcx), %rdi\n"
+        << "    movq 48(%rcx), %rbp\n"
+        << "    movq 56(%rcx), %rsp\n"
+        << "    ret\n";
 
     return programEmissionStream.str();
 }
