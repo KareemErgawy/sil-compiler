@@ -635,6 +635,7 @@ string EmitProgram(string programSource) {
         << "    movq %rbp, 48(%rcx)\n"
         << "    movq %rsp, 56(%rcx)\n"
         << "    movq %rsi, %rsp\n"  // Load stack space pointer into %rsp.
+        << "    movq %rdx, %rbp\n"  // Load heap space pointer into %rbp.
         << EmitExpr(-WordSize, TEnvironment(), progBody)
         << "    movq 8(%rcx), %rbx\n"
         << "    movq 32(%rcx), %rsi\n"

@@ -102,14 +102,16 @@ typedef struct {
     void* rsp;
 } context;
 
-int scheme_entry(context*, char*);
+int scheme_entry(context*, char*, char*);
 
 int main(int argc, char** argv) {
     int stack_size = (16 * 4096);
+    int heap_size = (16 * 4096);
     char* stack_top = allocate_protected_space(stack_size);
     char* stack_base = stack_top + stack_size;
+    char* heap = allocate_protected_space(heap_size);
     context ctxt;
-    print_ptr(scheme_entry(&ctxt, stack_base));
+    print_ptr(scheme_entry(&ctxt, stack_base, heap));
     deallocate_protected_space(stack_top, stack_size);
 
     return 0;
