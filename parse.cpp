@@ -71,9 +71,9 @@ bool TryParseUnaryPrimitive(string expr, string *outPrimitiveName,
     }
 
     static vector<string> unaryPrimitiveNames{
-        "fxadd1",  "fxsub1",  "fixnum->char", "char->fixnum",
-        "fixnum?", "fxzero?", "null?",        "boolean?",
-        "char?",   "not",     "fxlognot"};
+        "fxadd1",   "fxsub1", "fixnum->char", "char->fixnum", "fixnum?",
+        "fxzero?",  "null?",  "boolean?",     "char?",        "not",
+        "fxlognot", "pair?",  "car",          "cdr"};
 
     string primitiveName = "";
     size_t idx;
@@ -198,8 +198,8 @@ bool TryParseBinaryPrimitive(string expr, string *outPrimitiveName,
     }
 
     static vector<string> binaryPrimitiveNames{
-        "fx+", "fx-", "fx*",  "fxlogor", "fxlogand",
-        "fx=", "fx<", "fx<=", "fx>",     "fx>="};
+        "fx+", "fx-",  "fx*", "fxlogor", "fxlogand", "fx=",
+        "fx<", "fx<=", "fx>", "fx>=",    "cons"};
 
     string primitiveName = "";
     size_t idx;
