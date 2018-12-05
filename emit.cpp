@@ -68,8 +68,11 @@ string EmitFxAddImmediate(int stackIdx, TEnvironment env, string fxAddArg,
     assert(IsImmediate(fxAddImmediate));
 
     ostringstream exprEmissionStream;
-    exprEmissionStream << EmitExpr(stackIdx, env, fxAddArg) << "    addl $"
-                       << ImmediateRep(fxAddImmediate) << ", %eax\n"
+    exprEmissionStream << EmitExpr(stackIdx, env, fxAddArg)
+
+                       << "    addl $" << ImmediateRep(fxAddImmediate)
+                       << ", %eax\n"
+
                        << (isTail ? "ret\n" : "");
 
     return exprEmissionStream.str();
@@ -109,13 +112,20 @@ string EmitCharToFixNum(int stackIdx, TEnvironment env, string charToFixNumArg,
 string EmitIsFixNum(int stackIdx, TEnvironment env, string isFixNumArg,
                     bool isTail) {
     ostringstream exprEmissionStream;
-    exprEmissionStream << EmitExpr(stackIdx, env, isFixNumArg) << "    and $"
-                       << FxMask << ", %al\n"
+    exprEmissionStream << EmitExpr(stackIdx, env, isFixNumArg)
+
+                       << "    and $" << FxMask << ", %al\n"
+
                        << "    cmp $" << FxTag << ", %al\n"
+
                        << "    sete %al\n"
+
                        << "    movzbl %al, %eax\n"
+
                        << "    sal $" << BoolBit << ", %al\n"
+
                        << "    or $" << BoolF << ", %al\n"
+
                        << (isTail ? "ret\n" : "");
 
     return exprEmissionStream.str();
@@ -138,12 +148,18 @@ string EmitIsFxZero(int stackIdx, TEnvironment env, string isFxZeroArg,
 string EmitIsNull(int stackIdx, TEnvironment env, string isNullArg,
                   bool isTail) {
     ostringstream exprEmissionStream;
-    exprEmissionStream << EmitExpr(stackIdx, env, isNullArg) << "    cmpl $"
-                       << Null << ", %eax\n"
+    exprEmissionStream << EmitExpr(stackIdx, env, isNullArg)
+
+                       << "    cmpl $" << Null << ", %eax\n"
+
                        << "    sete %al\n"
+
                        << "    movzbl %al, %eax\n"
+
                        << "    sal $" << BoolBit << ", %al\n"
+
                        << "    or $" << BoolF << ", %al\n"
+
                        << (isTail ? "ret\n" : "");
 
     return exprEmissionStream.str();
@@ -152,13 +168,20 @@ string EmitIsNull(int stackIdx, TEnvironment env, string isNullArg,
 string EmitIsBoolean(int stackIdx, TEnvironment env, string isBooleanArg,
                      bool isTail) {
     ostringstream exprEmissionStream;
-    exprEmissionStream << EmitExpr(stackIdx, env, isBooleanArg) << "    and $"
-                       << BoolMask << ", %al\n"
+    exprEmissionStream << EmitExpr(stackIdx, env, isBooleanArg)
+
+                       << "    and $" << BoolMask << ", %al\n"
+
                        << "    cmp $" << BoolTag << ", %al\n"
+
                        << "    sete %al\n"
+
                        << "    movzbl %al, %eax\n"
+
                        << "    sal $" << BoolBit << ", %al\n"
+
                        << "    or $" << BoolF << ", %al\n"
+
                        << (isTail ? "ret\n" : "");
 
     return exprEmissionStream.str();
@@ -167,13 +190,20 @@ string EmitIsBoolean(int stackIdx, TEnvironment env, string isBooleanArg,
 string EmitIsChar(int stackIdx, TEnvironment env, string isCharArg,
                   bool isTail) {
     ostringstream exprEmissionStream;
-    exprEmissionStream << EmitExpr(stackIdx, env, isCharArg) << "    and $"
-                       << CharMask << ", %al\n"
+    exprEmissionStream << EmitExpr(stackIdx, env, isCharArg)
+
+                       << "    and $" << CharMask << ", %al\n"
+
                        << "    cmp $" << CharTag << ", %al\n"
+
                        << "    sete %al\n"
+
                        << "    movzbl %al, %eax\n"
+
                        << "    sal $" << BoolBit << ", %al\n"
+
                        << "    or $" << BoolF << ", %al\n"
+
                        << (isTail ? "ret\n" : "");
 
     return exprEmissionStream.str();
@@ -181,12 +211,18 @@ string EmitIsChar(int stackIdx, TEnvironment env, string isCharArg,
 
 string EmitNot(int stackIdx, TEnvironment env, string notArg, bool isTail) {
     ostringstream exprEmissionStream;
-    exprEmissionStream << EmitExpr(stackIdx, env, notArg) << "    cmpl $"
-                       << BoolF << ", %eax\n"
+    exprEmissionStream << EmitExpr(stackIdx, env, notArg)
+
+                       << "    cmpl $" << BoolF << ", %eax\n"
+
                        << "    sete %al\n"
+
                        << "    movzbl %al, %eax\n"
+
                        << "    sal $" << BoolBit << ", %al\n"
+
                        << "    or $" << BoolF << ", %al\n"
+
                        << (isTail ? "ret\n" : "");
 
     return exprEmissionStream.str();
@@ -195,8 +231,10 @@ string EmitNot(int stackIdx, TEnvironment env, string notArg, bool isTail) {
 string EmitFxLogNot(int stackIdx, TEnvironment env, string fxLogNotArg,
                     bool isTail) {
     ostringstream exprEmissionStream;
-    exprEmissionStream << EmitExpr(stackIdx, env, fxLogNotArg) << "    xor $"
-                       << FxMaskNeg << ", %eax\n"
+    exprEmissionStream << EmitExpr(stackIdx, env, fxLogNotArg)
+
+                       << "    xor $" << FxMaskNeg << ", %eax\n"
+
                        << (isTail ? "ret\n" : "");
 
     return exprEmissionStream.str();
@@ -205,10 +243,14 @@ string EmitFxLogNot(int stackIdx, TEnvironment env, string fxLogNotArg,
 string EmitFxAdd(int stackIdx, TEnvironment env, string lhs, string rhs,
                  bool isTail) {
     ostringstream exprEmissionStream;
-    exprEmissionStream << EmitExpr(stackIdx, env, lhs) << "    movl %eax, "
-                       << stackIdx << "(%rsp)\n"
-                       << EmitExpr(stackIdx - WordSize, env, rhs) << "    addl "
-                       << stackIdx << "(%rsp), %eax\n"
+    exprEmissionStream << EmitExpr(stackIdx, env, lhs)
+
+                       << "    movl %eax, " << stackIdx << "(%rsp)\n"
+
+                       << EmitExpr(stackIdx - WordSize, env, rhs)
+
+                       << "    addl " << stackIdx << "(%rsp), %eax\n"
+
                        << (isTail ? "ret\n" : "");
 
     return exprEmissionStream.str();
@@ -217,10 +259,14 @@ string EmitFxAdd(int stackIdx, TEnvironment env, string lhs, string rhs,
 string EmitFxSub(int stackIdx, TEnvironment env, string lhs, string rhs,
                  bool isTail) {
     ostringstream exprEmissionStream;
-    exprEmissionStream << EmitExpr(stackIdx, env, rhs) << "    movl %eax, "
-                       << stackIdx << "(%rsp)\n"
-                       << EmitExpr(stackIdx - WordSize, env, lhs) << "    subl "
-                       << stackIdx << "(%rsp), %eax\n"
+    exprEmissionStream << EmitExpr(stackIdx, env, rhs)
+
+                       << "    movl %eax, " << stackIdx << "(%rsp)\n"
+
+                       << EmitExpr(stackIdx - WordSize, env, lhs)
+
+                       << "    subl " << stackIdx << "(%rsp), %eax\n"
+
                        << (isTail ? "ret\n" : "");
 
     return exprEmissionStream.str();
@@ -229,11 +275,16 @@ string EmitFxSub(int stackIdx, TEnvironment env, string lhs, string rhs,
 string EmitFxMul(int stackIdx, TEnvironment env, string lhs, string rhs,
                  bool isTail) {
     ostringstream exprEmissionStream;
-    exprEmissionStream << EmitExpr(stackIdx, env, lhs) << "    sarl $"
-                       << FxShift << ", %eax\n"
+    exprEmissionStream << EmitExpr(stackIdx, env, lhs)
+
+                       << "    sarl $" << FxShift << ", %eax\n"
+
                        << "    movl %eax, " << stackIdx << "(%rsp)\n"
-                       << EmitExpr(stackIdx - WordSize, env, rhs) << "    imul "
-                       << stackIdx << "(%rsp), %eax\n"
+
+                       << EmitExpr(stackIdx - WordSize, env, rhs)
+
+                       << "    imul " << stackIdx << "(%rsp), %eax\n"
+
                        << (isTail ? "ret\n" : "");
 
     return exprEmissionStream.str();
@@ -242,10 +293,14 @@ string EmitFxMul(int stackIdx, TEnvironment env, string lhs, string rhs,
 string EmitFxLogOr(int stackIdx, TEnvironment env, string lhs, string rhs,
                    bool isTail) {
     ostringstream exprEmissionStream;
-    exprEmissionStream << EmitExpr(stackIdx, env, lhs) << "    movl %eax, "
-                       << stackIdx << "(%rsp)\n"
-                       << EmitExpr(stackIdx - WordSize, env, rhs) << "    or "
-                       << stackIdx << "(%rsp), %eax\n"
+    exprEmissionStream << EmitExpr(stackIdx, env, lhs)
+
+                       << "    movl %eax, " << stackIdx << "(%rsp)\n"
+
+                       << EmitExpr(stackIdx - WordSize, env, rhs)
+
+                       << "    or " << stackIdx << "(%rsp), %eax\n"
+
                        << (isTail ? "ret\n" : "");
 
     return exprEmissionStream.str();
@@ -254,10 +309,14 @@ string EmitFxLogOr(int stackIdx, TEnvironment env, string lhs, string rhs,
 string EmitFxLogAnd(int stackIdx, TEnvironment env, string lhs, string rhs,
                     bool isTail) {
     ostringstream exprEmissionStream;
-    exprEmissionStream << EmitExpr(stackIdx, env, lhs) << "    movl %eax, "
-                       << stackIdx << "(%rsp)\n"
-                       << EmitExpr(stackIdx - WordSize, env, rhs) << "    and "
-                       << stackIdx << "(%rsp), %eax\n"
+    exprEmissionStream << EmitExpr(stackIdx, env, lhs)
+
+                       << "    movl %eax, " << stackIdx << "(%rsp)\n"
+
+                       << EmitExpr(stackIdx - WordSize, env, rhs)
+
+                       << "    and " << stackIdx << "(%rsp), %eax\n"
+
                        << (isTail ? "ret\n" : "");
 
     return exprEmissionStream.str();
@@ -266,14 +325,22 @@ string EmitFxLogAnd(int stackIdx, TEnvironment env, string lhs, string rhs,
 string EmitFxCmp(int stackIdx, TEnvironment env, string lhs, string rhs,
                  string setcc, bool isTail) {
     ostringstream exprEmissionStream;
-    exprEmissionStream << EmitExpr(stackIdx, env, lhs) << "    movl %eax, "
-                       << stackIdx << "(%rsp)\n"
+    exprEmissionStream << EmitExpr(stackIdx, env, lhs)
+
+                       << "    movl %eax, " << stackIdx << "(%rsp)\n"
+
                        << EmitExpr(stackIdx - WordSize, env, rhs)
+
                        << "    cmpl  %eax, " << stackIdx << "(%rsp)\n"
+
                        << "    " << setcc << " %al\n"
+
                        << "    movzbl %al, %eax\n"
+
                        << "    sal $" << BoolBit << ", %al\n"
+
                        << "    or $" << BoolF << ", %al\n"
+
                        << (isTail ? "ret\n" : "");
 
     return exprEmissionStream.str();
