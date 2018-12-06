@@ -16,7 +16,12 @@ const unsigned int CharShift = 8;
 const unsigned int CharMask = 0xFF;
 const unsigned int CharTag = 0x0F;
 
-typedef unsigned int ptr;
+const unsigned int PairMask = 0x07;
+const unsigned int PairTag = 0x01;
+
+typedef unsigned long ptr;
+
+char* gHeap;
 
 static void print_char(char c) {
     if (c == ' ') {
@@ -47,11 +52,20 @@ static void print_ptr(ptr x) {
         printf("()");
     } else if ((x & CharMask) == CharTag) {
         print_char((char)(((int)x) >> CharShift));
+    } else if ((x & PairMask) == PairTag) {
+        /*printf("#<0x%08lx>\n", (ptr)gHeap);*/
+        /*printf("#<0x%08lx>\n", x);*/
+        ptr car = ((ptr*)(x - 1))[0];
+        ptr cdr = ((ptr*)(x - 1))[1];
+        /*printf("#<0x%08lx>, #<0x%08lx>\n", car, cdr);*/
+        printf("(");
+        print_ptr(car);
+        printf(" . ");
+        print_ptr(cdr);
+        printf(")");
     } else {
-        printf("#<unknown 0x%08x>", x);
+        printf("#<unknown 0x%08lx>", x);
     }
-
-    printf("\n");
 }
 
 static char* allocate_protected_space(int size) {
@@ -102,16 +116,17 @@ typedef struct {
     void* rsp;
 } context;
 
-int scheme_entry(context*, char*, char*);
+long scheme_entry(context*, char*, char*);
 
 int main(int argc, char** argv) {
     int stack_size = (16 * 4096);
     int heap_size = (16 * 4096);
     char* stack_top = allocate_protected_space(stack_size);
     char* stack_base = stack_top + stack_size;
-    char* heap = allocate_protected_space(heap_size);
+    gHeap = allocate_protected_space(heap_size);
     context ctxt;
-    print_ptr(scheme_entry(&ctxt, stack_base, heap));
+    print_ptr(scheme_entry(&ctxt, stack_base, gHeap));
+    printf("\n");
     deallocate_protected_space(stack_top, stack_size);
 
     return 0;
