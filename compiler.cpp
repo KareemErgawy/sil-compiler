@@ -142,7 +142,7 @@ int main(int argc, char *argv[]) {
             programAsmOutputStream << programAsm;
             programAsmOutputStream.close();
 
-            Exec(("gcc /home/ergawy/repos/sil-compiler/runtime.c " + testId +
+            Exec(("gcc -g /home/ergawy/repos/sil-compiler/runtime.c " + testId +
                   ".s -o " + testId + ".out")
                      .c_str());
             auto actualResult = Exec(("./" + testId + ".out").c_str());
