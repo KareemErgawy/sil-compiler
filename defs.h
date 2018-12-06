@@ -18,7 +18,7 @@ using TBinaryPrimitiveEmitter = std::string (*)(int, TEnvironment, std::string,
 
 const unsigned int FxShift = 2;
 const unsigned int FxMask = 0x03;
-const unsigned int FxMaskNeg = 0xFFFFFFFC;
+const int FxMaskNeg = 0xFFFFFFFC;
 const unsigned int FxTag = 0x00;
 
 const unsigned int BoolF = 0x2F;
@@ -36,10 +36,10 @@ const unsigned int CharTag = 0x0F;
 const unsigned int PairMask = 0x03;
 const unsigned int PairTag = 0x01;
 
-const int WordSize = 4;
+const int WordSize = 8;
 
-const unsigned int FixNumBits = WordSize * 8 - FxShift;
-const int FxLower = -pow(2, FixNumBits - 1);
-const int FxUpper = pow(2, FixNumBits - 1) - 1;
+const int FixNumBits = WordSize * 8 - FxShift;
+const long FxLower = -pow(2, FixNumBits - 1);
+const long FxUpper = pow(2, FixNumBits - 1) - 1;
 
 #endif

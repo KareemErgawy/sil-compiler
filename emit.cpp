@@ -59,8 +59,8 @@ int ImmediateRep(string token) {
 
 string EmitVarRef(TEnvironment env, string expr, bool isTail) {
     auto stackIdx = env.at(expr);
-    return "    movl " + to_string(stackIdx) + "(%rsp), %eax\n" +
-           (isTail ? "ret\n" : "");
+    return "    movq " + to_string(stackIdx) + "(%rsp), %rax\n" +
+           (isTail ? "    ret\n" : "");
 }
 
 string EmitFxAddImmediate(int stackIdx, TEnvironment env, string fxAddArg,
@@ -70,8 +70,8 @@ string EmitFxAddImmediate(int stackIdx, TEnvironment env, string fxAddArg,
     ostringstream exprEmissionStream;
     exprEmissionStream << EmitExpr(stackIdx, env, fxAddArg)
 
-                       << "    addl $" << ImmediateRep(fxAddImmediate)
-                       << ", %eax\n"
+                       << "    addq $" << ImmediateRep(fxAddImmediate)
+                       << ", %rax\n"
 
                        << (isTail ? "ret\n" : "");
 
@@ -92,8 +92,8 @@ string EmitFixNumToChar(int stackIdx, TEnvironment env, string fixNumToCharArg,
                         bool isTail) {
     ostringstream exprEmissionStream;
     exprEmissionStream << EmitExpr(stackIdx, env, fixNumToCharArg)
-                       << "    shll $" << (CharShift - FxShift) << ", %eax\n"
-                       << "    orl $" << CharTag << ", %eax\n"
+                       << "    shlq $" << (CharShift - FxShift) << ", %rax\n"
+                       << "    orq $" << CharTag << ", %rax\n"
                        << (isTail ? "ret\n" : "");
 
     return exprEmissionStream.str();
@@ -103,7 +103,7 @@ string EmitCharToFixNum(int stackIdx, TEnvironment env, string charToFixNumArg,
                         bool isTail) {
     ostringstream exprEmissionStream;
     exprEmissionStream << EmitExpr(stackIdx, env, charToFixNumArg)
-                       << "    shrl $" << (CharShift - FxShift) << ", %eax\n"
+                       << "    shrq $" << (CharShift - FxShift) << ", %rax\n"
                        << (isTail ? "ret\n" : "");
 
     return exprEmissionStream.str();
@@ -120,7 +120,7 @@ string EmitIsFixNum(int stackIdx, TEnvironment env, string isFixNumArg,
 
                        << "    sete %al\n"
 
-                       << "    movzbl %al, %eax\n"
+                       << "    movzbq %al, %rax\n"
 
                        << "    sal $" << BoolBit << ", %al\n"
 
@@ -135,9 +135,9 @@ string EmitIsFxZero(int stackIdx, TEnvironment env, string isFxZeroArg,
                     bool isTail) {
     ostringstream exprEmissionStream;
     exprEmissionStream << EmitExpr(stackIdx, env, isFxZeroArg)
-                       << "    cmpl $0, %eax\n"
+                       << "    cmpq $0, %rax\n"
                        << "    sete %al\n"
-                       << "    movzbl %al, %eax\n"
+                       << "    movzbq %al, %rax\n"
                        << "    sal $" << BoolBit << ", %al\n"
                        << "    or $" << BoolF << ", %al\n"
                        << (isTail ? "ret\n" : "");
@@ -150,11 +150,11 @@ string EmitIsNull(int stackIdx, TEnvironment env, string isNullArg,
     ostringstream exprEmissionStream;
     exprEmissionStream << EmitExpr(stackIdx, env, isNullArg)
 
-                       << "    cmpl $" << Null << ", %eax\n"
+                       << "    cmpq $" << Null << ", %rax\n"
 
                        << "    sete %al\n"
 
-                       << "    movzbl %al, %eax\n"
+                       << "    movzbq %al, %rax\n"
 
                        << "    sal $" << BoolBit << ", %al\n"
 
@@ -176,7 +176,7 @@ string EmitIsBoolean(int stackIdx, TEnvironment env, string isBooleanArg,
 
                        << "    sete %al\n"
 
-                       << "    movzbl %al, %eax\n"
+                       << "    movzbq %al, %rax\n"
 
                        << "    sal $" << BoolBit << ", %al\n"
 
@@ -198,7 +198,7 @@ string EmitIsChar(int stackIdx, TEnvironment env, string isCharArg,
 
                        << "    sete %al\n"
 
-                       << "    movzbl %al, %eax\n"
+                       << "    movzbq %al, %rax\n"
 
                        << "    sal $" << BoolBit << ", %al\n"
 
@@ -213,11 +213,11 @@ string EmitNot(int stackIdx, TEnvironment env, string notArg, bool isTail) {
     ostringstream exprEmissionStream;
     exprEmissionStream << EmitExpr(stackIdx, env, notArg)
 
-                       << "    cmpl $" << BoolF << ", %eax\n"
+                       << "    cmpq $" << BoolF << ", %rax\n"
 
                        << "    sete %al\n"
 
-                       << "    movzbl %al, %eax\n"
+                       << "    movzbq %al, %rax\n"
 
                        << "    sal $" << BoolBit << ", %al\n"
 
@@ -233,7 +233,7 @@ string EmitFxLogNot(int stackIdx, TEnvironment env, string fxLogNotArg,
     ostringstream exprEmissionStream;
     exprEmissionStream << EmitExpr(stackIdx, env, fxLogNotArg)
 
-                       << "    xor $" << FxMaskNeg << ", %eax\n"
+                       << "    xor $" << FxMaskNeg << ", %rax\n"
 
                        << (isTail ? "ret\n" : "");
 
@@ -245,11 +245,11 @@ string EmitFxAdd(int stackIdx, TEnvironment env, string lhs, string rhs,
     ostringstream exprEmissionStream;
     exprEmissionStream << EmitExpr(stackIdx, env, lhs)
 
-                       << "    movl %eax, " << stackIdx << "(%rsp)\n"
+                       << "    movq %rax, " << stackIdx << "(%rsp)\n"
 
                        << EmitExpr(stackIdx - WordSize, env, rhs)
 
-                       << "    addl " << stackIdx << "(%rsp), %eax\n"
+                       << "    addq " << stackIdx << "(%rsp), %rax\n"
 
                        << (isTail ? "ret\n" : "");
 
@@ -261,11 +261,11 @@ string EmitFxSub(int stackIdx, TEnvironment env, string lhs, string rhs,
     ostringstream exprEmissionStream;
     exprEmissionStream << EmitExpr(stackIdx, env, rhs)
 
-                       << "    movl %eax, " << stackIdx << "(%rsp)\n"
+                       << "    movq %rax, " << stackIdx << "(%rsp)\n"
 
                        << EmitExpr(stackIdx - WordSize, env, lhs)
 
-                       << "    subl " << stackIdx << "(%rsp), %eax\n"
+                       << "    subq " << stackIdx << "(%rsp), %rax\n"
 
                        << (isTail ? "ret\n" : "");
 
@@ -277,13 +277,13 @@ string EmitFxMul(int stackIdx, TEnvironment env, string lhs, string rhs,
     ostringstream exprEmissionStream;
     exprEmissionStream << EmitExpr(stackIdx, env, lhs)
 
-                       << "    sarl $" << FxShift << ", %eax\n"
+                       << "    sarq $" << FxShift << ", %rax\n"
 
-                       << "    movl %eax, " << stackIdx << "(%rsp)\n"
+                       << "    movq %rax, " << stackIdx << "(%rsp)\n"
 
                        << EmitExpr(stackIdx - WordSize, env, rhs)
 
-                       << "    imul " << stackIdx << "(%rsp), %eax\n"
+                       << "    imul " << stackIdx << "(%rsp), %rax\n"
 
                        << (isTail ? "ret\n" : "");
 
@@ -295,11 +295,11 @@ string EmitFxLogOr(int stackIdx, TEnvironment env, string lhs, string rhs,
     ostringstream exprEmissionStream;
     exprEmissionStream << EmitExpr(stackIdx, env, lhs)
 
-                       << "    movl %eax, " << stackIdx << "(%rsp)\n"
+                       << "    movq %rax, " << stackIdx << "(%rsp)\n"
 
                        << EmitExpr(stackIdx - WordSize, env, rhs)
 
-                       << "    or " << stackIdx << "(%rsp), %eax\n"
+                       << "    or " << stackIdx << "(%rsp), %rax\n"
 
                        << (isTail ? "ret\n" : "");
 
@@ -311,11 +311,11 @@ string EmitFxLogAnd(int stackIdx, TEnvironment env, string lhs, string rhs,
     ostringstream exprEmissionStream;
     exprEmissionStream << EmitExpr(stackIdx, env, lhs)
 
-                       << "    movl %eax, " << stackIdx << "(%rsp)\n"
+                       << "    movq %rax, " << stackIdx << "(%rsp)\n"
 
                        << EmitExpr(stackIdx - WordSize, env, rhs)
 
-                       << "    and " << stackIdx << "(%rsp), %eax\n"
+                       << "    and " << stackIdx << "(%rsp), %rax\n"
 
                        << (isTail ? "ret\n" : "");
 
@@ -327,15 +327,15 @@ string EmitFxCmp(int stackIdx, TEnvironment env, string lhs, string rhs,
     ostringstream exprEmissionStream;
     exprEmissionStream << EmitExpr(stackIdx, env, lhs)
 
-                       << "    movl %eax, " << stackIdx << "(%rsp)\n"
+                       << "    movq %rax, " << stackIdx << "(%rsp)\n"
 
                        << EmitExpr(stackIdx - WordSize, env, rhs)
 
-                       << "    cmpl  %eax, " << stackIdx << "(%rsp)\n"
+                       << "    cmpq  %rax, " << stackIdx << "(%rsp)\n"
 
                        << "    " << setcc << " %al\n"
 
-                       << "    movzbl %al, %eax\n"
+                       << "    movzbq %al, %rax\n"
 
                        << "    sal $" << BoolBit << ", %al\n"
 
@@ -378,13 +378,13 @@ string EmitCons(int stackIdx, TEnvironment env, string first, string second,
     // TODO Since we compute pointers now, move to 64-bit representation for
     // everything else.
     exprOS << EmitExpr(stackIdx, env, first)
-           << "    movl %eax, (%rbp)\n"  // Store car at the next avaiable heap
+           << "    movq %rax, (%rbp)\n"  // Store car at the next avaiable heap
                                          // pointer.
            << EmitExpr(stackIdx, env, second)
-           << "    movl %eax, 4(%rbp)\n"  // Store cdr a word after car.
+           << "    movq %rax, 8(%rbp)\n"  // Store cdr a word after car.
            << "    addq $8, %rbp\n"       // Move the heap forward by pair size.
-           << "    movl %ebp, %eax\n"     // Store the pair pointer into %eax.
-           << "    orl $" << PairTag << ", %eax\n"
+           << "    movq %rbp, %rax\n"     // Store the pair pointer into %rax.
+           << "    orq $" << PairTag << ", %rax\n"
            << (isTail ? "ret\n" : "");
 
     return exprOS.str();
@@ -403,7 +403,7 @@ string EmitIsPair(int stackIdx, TEnvironment env, string isPairArg,
 
            << "    sete %al\n"
 
-           << "    movzbl %al, %eax\n"
+           << "    movzbq %al, %rax\n"
 
            << "    sal $" << BoolBit << ", %al\n"
 
@@ -480,7 +480,7 @@ string EmitOrExpr(int stackIdx, TEnvironment env, const vector<string> &orArgs,
 }
 
 string EmitStackSave(int stackIdx) {
-    return "    movl %eax, " + to_string(stackIdx) + "(%rsp)\n";
+    return "    movq %rax, " + to_string(stackIdx) + "(%rsp)\n";
 }
 
 string EmitLetExpr(int stackIdx, TEnvironment env, const TBindings &bindings,
@@ -533,7 +533,7 @@ string EmitSaveProcParamsOnStack(int stackIdx, TEnvironment env,
                                  vector<string> params) {
     ostringstream callOS;
     // Leave room to store the return address on the stack.
-    auto paramStackIdx = stackIdx - (WordSize * 2);
+    auto paramStackIdx = stackIdx - WordSize;
 
     for (auto p : params) {
         callOS << EmitExpr(paramStackIdx, env, p)
@@ -565,12 +565,12 @@ string EmitTailProcCall(int stackIdx, TEnvironment env, string procName,
                         vector<string> params) {
     ostringstream callOS;
     callOS << EmitSaveProcParamsOnStack(stackIdx, env, params);
-    auto oldParamStackIdx = stackIdx - (WordSize * 2);
+    auto oldParamStackIdx = stackIdx - WordSize;
     auto newParamStackIdx = -WordSize;
 
     for (auto p : params) {
-        callOS << "    movl " << oldParamStackIdx << "(%rsp), %eax\n"
-               << "    movl %eax, " << newParamStackIdx << "(%rsp)\n";
+        callOS << "    movq " << oldParamStackIdx << "(%rsp), %rax\n"
+               << "    movq %rax, " << newParamStackIdx << "(%rsp)\n";
         oldParamStackIdx -= WordSize;
         newParamStackIdx -= WordSize;
     }
@@ -617,8 +617,7 @@ string EmitLetrecLambdas(const TBindings &lambdas) {
     ostringstream allLambdasOS;
 
     for (auto l : lambdas) {
-        allLambdasOS << EmitLambda(gLambdaTable[l.first], l.second)
-                     << "    ret\n\n";
+        allLambdasOS << EmitLambda(gLambdaTable[l.first], l.second);
     }
 
     return allLambdasOS.str();
@@ -629,7 +628,7 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
 
     if (IsImmediate(expr)) {
         ostringstream exprEmissionStream;
-        exprEmissionStream << "    movl $" << ImmediateRep(expr) << ", %eax\n"
+        exprEmissionStream << "    movq $" << ImmediateRep(expr) << ", %rax\n"
                            << (isTail ? "ret\n" : "");
 
         return exprEmissionStream.str();
