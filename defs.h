@@ -33,7 +33,7 @@ const unsigned int CharShift = 8;
 const unsigned int CharMask = 0xFF;
 const unsigned int CharTag = 0x0F;
 
-const unsigned int PairMask = 0x03;
+const unsigned int PairMask = 0x07;
 const unsigned int PairTag = 0x01;
 
 const int WordSize = 8;

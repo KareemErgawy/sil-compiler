@@ -382,9 +382,9 @@ string EmitCons(int stackIdx, TEnvironment env, string first, string second,
                                          // pointer.
            << EmitExpr(stackIdx, env, second)
            << "    movq %rax, 8(%rbp)\n"  // Store cdr a word after car.
-           << "    addq $8, %rbp\n"       // Move the heap forward by pair size.
            << "    movq %rbp, %rax\n"     // Store the pair pointer into %rax.
            << "    orq $" << PairTag << ", %rax\n"
+           << "    addq $8, %rbp\n"  // Move the heap forward by pair size.
            << (isTail ? "ret\n" : "");
 
     return exprOS.str();
