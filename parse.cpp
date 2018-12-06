@@ -449,6 +449,10 @@ bool TryParseLambda(string expr, vector<string> *outFormalArgs,
         string argName;
         formalArgReader >> argName;
 
+        if (argName.size() == 0) {
+            break;
+        }
+
         if (!IsVarName(argName)) {
             return false;
         }
