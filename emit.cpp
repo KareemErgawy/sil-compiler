@@ -15,6 +15,14 @@ string UniqueLabel(string prefix = "") {
     return prefix + "_L_" + to_string(count++);
 }
 
+string EmitStackSave(int stackIdx) {
+    return "    movq %rax, " + to_string(stackIdx) + "(%rsp)\n";
+}
+
+string EmitStackLoad(int stackIdx) {
+    return "    movq " + to_string(stackIdx) + "(%rsp), %rax\n";
+}
+
 char TokenToChar(string token) {
     assert(IsChar(token));
 
@@ -375,16 +383,25 @@ string EmitCons(int stackIdx, TEnvironment env, string first, string second,
                 bool isTail) {
     ostringstream exprOS;
 
-    // TODO Since we compute pointers now, move to 64-bit representation for
-    // everything else.
     exprOS << EmitExpr(stackIdx, env, first)
+
+           << EmitStackSave(stackIdx)
+
+           << EmitExpr(stackIdx - WordSize, env, second)
+
+           << "    movq %rax, 8(%rbp)\n"  // Store cdr a word after car.
+
+           << EmitStackLoad(stackIdx)
+
            << "    movq %rax, (%rbp)\n"  // Store car at the next avaiable heap
                                          // pointer.
-           << EmitExpr(stackIdx, env, second)
-           << "    movq %rax, 8(%rbp)\n"  // Store cdr a word after car.
-           << "    movq %rbp, %rax\n"     // Store the pair pointer into %rax.
+
+           << "    movq %rbp, %rax\n"  // Store the pair pointer into %rax.
+
            << "    orq $" << PairTag << ", %rax\n"
-           << "    addq $8, %rbp\n"  // Move the heap forward by pair size.
+
+           << "    addq $16, %rbp\n"  // Move the heap forward by pair size.
+
            << (isTail ? "ret\n" : "");
 
     return exprOS.str();
@@ -409,7 +426,29 @@ string EmitIsPair(int stackIdx, TEnvironment env, string isPairArg,
 
            << "    or $" << BoolF << ", %al\n"
 
-           << (isTail ? "ret\n" : "");
+           << (isTail ? "    ret\n" : "");
+
+    return exprOS.str();
+}
+
+string EmitCar(int stackIdx, TEnvironment env, string carArg, bool isTail) {
+    ostringstream exprOS;
+
+    exprOS << EmitExpr(stackIdx, env, carArg, isTail)
+           << "    mov -1(%rax), %rax\n"
+           << (isTail ? "    ret\n" : "");
+
+    return exprOS.str();
+}
+
+string EmitCdr(int stackIdx, TEnvironment env, string carArg, bool isTail) {
+    ostringstream exprOS;
+
+    exprOS << EmitExpr(stackIdx, env, carArg, isTail)
+
+           << "    mov 7(%rax), %rax\n"
+
+           << (isTail ? "    ret\n" : "");
 
     return exprOS.str();
 }
@@ -477,10 +516,6 @@ string EmitAndExpr(int stackIdx, TEnvironment env,
 string EmitOrExpr(int stackIdx, TEnvironment env, const vector<string> &orArgs,
                   bool isTail) {
     return EmitLogicalExpr(stackIdx, env, orArgs, false, isTail);
-}
-
-string EmitStackSave(int stackIdx) {
-    return "    movq %rax, " + to_string(stackIdx) + "(%rsp)\n";
 }
 
 string EmitLetExpr(int stackIdx, TEnvironment env, const TBindings &bindings,
@@ -654,7 +689,9 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
             {"char?", EmitIsChar},
             {"not", EmitNot},
             {"fxlognot", EmitFxLogNot},
-            {"pair?", EmitIsPair}};
+            {"pair?", EmitIsPair},
+            {"car", EmitCar},
+            {"cdr", EmitCdr}};
         assert(unaryEmitters[primitiveName] != nullptr);
         return unaryEmitters[primitiveName](stackIdx, env, arg, isTail);
     }
