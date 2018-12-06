@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
                 expectedResultOutputStream
                     << (lastSubString ? nextResultSubString.substr(
                                             0, nextResultSubString.size() - 1)
-                                      : nextResultSubString);
+                                      : nextResultSubString + " ");
 
                 if (lastSubString) {
                     break;
