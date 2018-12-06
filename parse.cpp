@@ -51,8 +51,16 @@ bool IsImmediate(string token) {
 }
 
 bool IsVarName(string token) {
+    if (token.size() == 0) {
+        return false;
+    }
+
+    if (!isalpha(token[0])) {
+        return false;
+    }
+
     for (auto c : token) {
-        if (!isalpha(c)) {
+        if (!isalnum(c)) {
             return false;
         }
     }
