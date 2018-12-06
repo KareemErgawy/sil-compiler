@@ -41,7 +41,7 @@ static void print_char(char c) {
     }
 }
 
-static void print_ptr(ptr x) {
+static void print_ptr(ptr x, int parentIsPair) {
     if ((x & FxMask) == FxTag) {
         printf("%d", ((int)x) >> FxShift);
     } else if (x == BoolF) {
@@ -53,16 +53,31 @@ static void print_ptr(ptr x) {
     } else if ((x & CharMask) == CharTag) {
         print_char((char)(((int)x) >> CharShift));
     } else if ((x & PairMask) == PairTag) {
-        /*printf("#<0x%08lx>\n", (ptr)gHeap);*/
-        /*printf("#<0x%08lx>\n", x);*/
-        ptr car = ((ptr*)(x - 1))[0];
-        ptr cdr = ((ptr*)(x - 1))[1];
-        /*printf("#<0x%08lx>, #<0x%08lx>\n", car, cdr);*/
-        printf("(");
-        print_ptr(car);
-        printf(" . ");
-        print_ptr(cdr);
-        printf(")");
+        ptr car = ((ptr*)(x - PairTag))[0];
+        ptr cdr = ((ptr*)(x - PairTag))[1];
+
+        // If x is a nested pair/list, don't print the (.
+        if (!parentIsPair) {
+            printf("(");
+        }
+
+        print_ptr(car, 0);
+
+        if (cdr != Null) {
+            // If cdr is a nested pair/list, don't print the dot.
+            if ((cdr & PairMask) != PairTag) {
+                printf(" . ");
+            } else {
+                printf(" ");
+            }
+
+            print_ptr(cdr, 1);
+        }
+
+        // If x is a nested pair/list, don't print the ).
+        if (!parentIsPair) {
+            printf(")");
+        }
     } else {
         printf("#<unknown 0x%08lx>", x);
     }
@@ -125,7 +140,7 @@ int main(int argc, char** argv) {
     char* stack_base = stack_top + stack_size;
     gHeap = allocate_protected_space(heap_size);
     context ctxt;
-    print_ptr(scheme_entry(&ctxt, stack_base, gHeap));
+    print_ptr(scheme_entry(&ctxt, stack_base, gHeap), 0);
     printf("\n");
     deallocate_protected_space(stack_top, stack_size);
 
