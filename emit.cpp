@@ -519,7 +519,7 @@ string EmitOrExpr(int stackIdx, TEnvironment env, const vector<string> &orArgs,
 }
 
 string EmitLetExpr(int stackIdx, TEnvironment env, const TBindings &bindings,
-                   string letBody, bool isTail) {
+                   vector<string> letBody, bool isTail) {
     ostringstream exprEmissionStream;
     int si = stackIdx;
     TEnvironment envExtension;
@@ -536,14 +536,17 @@ string EmitLetExpr(int stackIdx, TEnvironment env, const TBindings &bindings,
         env[v.first] = v.second;
     }
 
-    exprEmissionStream << EmitExpr(si, env, letBody, isTail);
+    for (int i = 0; i < letBody.size(); ++i) {
+        exprEmissionStream << EmitExpr(si, env, letBody[i],
+                                       isTail && (i == letBody.size() - 1));
+    }
 
     return exprEmissionStream.str();
 }
 
 string EmitLetAsteriskExpr(int stackIdx, TEnvironment env,
-                           const TOrderedBindings &bindings, string letBody,
-                           bool isTail) {
+                           const TOrderedBindings &bindings,
+                           vector<string> letBody, bool isTail) {
     ostringstream exprEmissionStream;
     int si = stackIdx;
 
@@ -557,7 +560,10 @@ string EmitLetAsteriskExpr(int stackIdx, TEnvironment env,
         si -= WordSize;
     }
 
-    exprEmissionStream << EmitExpr(si, env, letBody, isTail);
+    for (int i = 0; i < letBody.size(); ++i) {
+        exprEmissionStream << EmitExpr(si, env, letBody[i],
+                                       isTail && (i == letBody.size() - 1));
+    }
 
     return exprEmissionStream.str();
 }
@@ -746,14 +752,14 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
     }
 
     TBindings bindings;
-    string letBody;
+    vector<string> letBody;
 
     if (TryParseLetExpr(expr, &bindings, &letBody)) {
         return EmitLetExpr(stackIdx, env, bindings, letBody, isTail);
     }
 
     TOrderedBindings bindings2;
-    string letBody2;
+    vector<string> letBody2;
 
     if (TryParseLetAsteriskExpr(expr, &bindings2, &letBody2)) {
         return EmitLetAsteriskExpr(stackIdx, env, bindings2, letBody2, isTail);
@@ -784,12 +790,12 @@ string EmitProgram(string programSource) {
     programEmissionStream << "    .text\n\n";
 
     TBindings lambdas;
-    string progBody;
+    vector<string> progBody;
 
     if (TryParseLetrec(programSource, &lambdas, &progBody)) {
         programEmissionStream << EmitLetrecLambdas(lambdas);
     } else {
-        progBody = programSource;
+        progBody.push_back(programSource);
     }
 
     programEmissionStream
@@ -802,15 +808,19 @@ string EmitProgram(string programSource) {
         << "    movq %rdi, 40(%rcx)\n"
         << "    movq %rbp, 48(%rcx)\n"
         << "    movq %rsp, 56(%rcx)\n"
-        << "    movq %rsi, %rsp\n"  // Load stack space pointer into %rsp.
-        << "    movq %rdx, %rbp\n"  // Load heap space pointer into %rbp.
-        << EmitExpr(-WordSize, TEnvironment(), progBody)
-        << "    movq 8(%rcx), %rbx\n"
-        << "    movq 32(%rcx), %rsi\n"
-        << "    movq 40(%rcx), %rdi\n"
-        << "    movq 48(%rcx), %rbp\n"
-        << "    movq 56(%rcx), %rsp\n"
-        << "    ret\n";
+        << "    movq %rsi, %rsp\n"   // Load stack space pointer into %rsp.
+        << "    movq %rdx, %rbp\n";  // Load heap space pointer into %rbp.
+
+    for (const auto &expr : progBody) {
+        programEmissionStream << EmitExpr(-WordSize, TEnvironment(), expr);
+    }
+
+    programEmissionStream << "    movq 8(%rcx), %rbx\n"
+                          << "    movq 32(%rcx), %rsi\n"
+                          << "    movq 40(%rcx), %rdi\n"
+                          << "    movq 48(%rcx), %rbp\n"
+                          << "    movq 56(%rcx), %rsp\n"
+                          << "    ret\n";
 
     return programEmissionStream.str();
 }

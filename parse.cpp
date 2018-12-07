@@ -357,22 +357,16 @@ bool TryParseLetBindings(string expr, size_t *idx, TBindings *outBindings) {
     return true;
 }
 
-bool TryParseLetBody(string expr, size_t idx, string *outLetBody) {
+bool TryParseLetBody(string expr, size_t idx, vector<string> *outLetBody) {
     if (SkipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
         return false;
     }
 
-    auto letBody = expr.substr(idx, expr.size() - 1 - idx);
-
-    if (outLetBody != nullptr) {
-        *outLetBody = letBody;
-    }
-
-    return IsExpr(letBody);
+    return TryParseVariableNumOfSubExpr(expr, idx, outLetBody);
 }
 
-bool TryParseLetExpr(string expr, TBindings *outBindings, string *outLetBody) {
-    // TODO Add support for mutli-expression let body.
+bool TryParseLetExpr(string expr, TBindings *outBindings,
+                     vector<string> *outLetBody) {
     if (expr.size() < 5) {
         return false;
     }
@@ -392,7 +386,7 @@ bool TryParseLetExpr(string expr, TBindings *outBindings, string *outLetBody) {
 }
 
 bool TryParseLetAsteriskExpr(string expr, TOrderedBindings *outBindings,
-                             string *outLetBody) {
+                             vector<string> *outLetBody) {
     if (expr.size() < 6) {
         return false;
     }
@@ -514,7 +508,8 @@ bool TryParseProcCallExpr(string expr, string *outProcName,
     return TryParseVariableNumOfSubExpr(expr, idx, outParams);
 }
 
-bool TryParseLetrec(string expr, TBindings *outBindings, string *outLetBody) {
+bool TryParseLetrec(string expr, TBindings *outBindings,
+                    vector<string> *outLetBody) {
     if (expr.size() < 8) {
         return false;
     }

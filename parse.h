@@ -25,17 +25,17 @@ bool TryParseAndExpr(std::string expr,
 bool TryParseOrExpr(std::string expr,
                     std::vector<std::string> *outOrArgs = nullptr);
 bool TryParseLetExpr(std::string expr, TBindings *outBindings = nullptr,
-                     std::string *outLetBody = nullptr);
+                     std::vector<std::string> *outLetBody = nullptr);
 bool TryParseLetAsteriskExpr(std::string expr,
                              TOrderedBindings *outBindings = nullptr,
-                             std::string *outLetBody = nullptr);
+                             std::vector<std::string> *outLetBody = nullptr);
 bool TryParseLambda(std::string expr,
                     std::vector<std::string> *outVars = nullptr,
                     std::string *outBody = nullptr);
 bool TryParseProcCallExpr(std::string expr, std::string *outProcName = nullptr,
                           std::vector<std::string> *outParams = nullptr);
 bool TryParseLetrec(std::string expr, TBindings *outBindings = nullptr,
-                    std::string *outLetBody = nullptr);
+                    std::vector<std::string> *outLetBody = nullptr);
 
 bool TryParseBegin(std::string expr,
                    std::vector<std::string> *outExprList = nullptr);
