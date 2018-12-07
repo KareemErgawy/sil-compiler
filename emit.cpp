@@ -435,7 +435,7 @@ string EmitCar(int stackIdx, TEnvironment env, string carArg, bool isTail) {
     ostringstream exprOS;
 
     exprOS << EmitExpr(stackIdx, env, carArg, isTail)
-           << "    mov -1(%rax), %rax\n"
+           << "    movq -1(%rax), %rax\n"
            << (isTail ? "    ret\n" : "");
 
     return exprOS.str();
@@ -446,11 +446,42 @@ string EmitCdr(int stackIdx, TEnvironment env, string carArg, bool isTail) {
 
     exprOS << EmitExpr(stackIdx, env, carArg, isTail)
 
-           << "    mov 7(%rax), %rax\n"
+           << "    movq 7(%rax), %rax\n"
 
            << (isTail ? "    ret\n" : "");
 
     return exprOS.str();
+}
+
+string EmitSetPairElement(int stackIdx, TEnvironment env, string oldPair,
+                          string newCar, bool isTail, int relOffset) {
+    ostringstream exprOS;
+
+    exprOS << EmitExpr(stackIdx, env, newCar)
+
+           << EmitStackSave(stackIdx)
+
+           << EmitExpr(stackIdx - WordSize, env, oldPair)
+
+           << "    movq %rax, %rbx\n"
+
+           << EmitStackLoad(stackIdx)
+
+           << "    movq %rax, " << relOffset << "(%rbx)\n"
+
+           << (isTail ? "    ret\n" : "");
+
+    return exprOS.str();
+}
+
+string EmitSetCar(int stackIdx, TEnvironment env, string oldPair, string newCar,
+                  bool isTail) {
+    return EmitSetPairElement(stackIdx, env, oldPair, newCar, isTail, -1);
+}
+
+string EmitSetCdr(int stackIdx, TEnvironment env, string oldPair, string newCdr,
+                  bool isTail) {
+    return EmitSetPairElement(stackIdx, env, oldPair, newCdr, isTail, 7);
 }
 
 string EmitIfExpr(int stackIdx, TEnvironment env, string cond, string conseq,
@@ -725,7 +756,8 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
             {"fxlogand", EmitFxLogAnd}, {"fx=", EmitFxEq},
             {"fx<", EmitFxLT},          {"fx<=", EmitFxLE},
             {"fx>", EmitFxGT},          {"fx>=", EmitFxGE},
-            {"cons", EmitCons}};
+            {"cons", EmitCons},         {"set-car!", EmitSetCar},
+            {"set-cdr!", EmitSetCdr}};
         assert(binaryEmitters[primitiveName] != nullptr);
         return binaryEmitters[primitiveName](stackIdx, env, args[0], args[1],
                                              isTail);
