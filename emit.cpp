@@ -658,6 +658,19 @@ string EmitLetrecLambdas(const TBindings &lambdas) {
     return allLambdasOS.str();
 }
 
+string EmitBegin(int stackIdx, TEnvironment env, vector<string> beginExprList,
+                 bool isTail) {
+    assert(beginExprList.size() > 0);
+    ostringstream exprOS;
+
+    for (int i = 0; i < beginExprList.size(); ++i) {
+        exprOS << EmitExpr(stackIdx, env, beginExprList[i],
+                           isTail && i == (beginExprList.size() - 1));
+    }
+
+    return exprOS.str();
+}
+
 string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
     assert(IsExpr(expr));
 
@@ -744,6 +757,12 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
 
     if (TryParseLetAsteriskExpr(expr, &bindings2, &letBody2)) {
         return EmitLetAsteriskExpr(stackIdx, env, bindings2, letBody2, isTail);
+    }
+
+    vector<string> beginExprList;
+
+    if (TryParseBegin(expr, &beginExprList)) {
+        return EmitBegin(stackIdx, env, beginExprList, isTail);
     }
 
     string procName;

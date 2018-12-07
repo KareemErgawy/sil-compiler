@@ -372,6 +372,7 @@ bool TryParseLetBody(string expr, size_t idx, string *outLetBody) {
 }
 
 bool TryParseLetExpr(string expr, TBindings *outBindings, string *outLetBody) {
+    // TODO Add support for mutli-expression let body.
     if (expr.size() < 5) {
         return false;
     }
@@ -557,7 +558,7 @@ bool IsExpr(string expr) {
            TryParseUnaryPrimitive(expr) || TryParseBinaryPrimitive(expr) ||
            TryParseIfExpr(expr) || TryParseAndExpr(expr) ||
            TryParseOrExpr(expr) || TryParseLetExpr(expr) ||
-           TryParseLetAsteriskExpr(expr) || TryParseProcCallExpr(expr) ||
-           TryParseLambda(expr);
+           TryParseLetAsteriskExpr(expr) || TryParseLambda(expr) ||
+           TryParseBegin(expr) || TryParseProcCallExpr(expr);
 }
 
