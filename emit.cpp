@@ -330,8 +330,8 @@ string EmitFxLogAnd(int stackIdx, TEnvironment env, string lhs, string rhs,
     return exprEmissionStream.str();
 }
 
-string EmitFxCmp(int stackIdx, TEnvironment env, string lhs, string rhs,
-                 string setcc, bool isTail) {
+string EmitCmp(int stackIdx, TEnvironment env, string lhs, string rhs,
+               string setcc, bool isTail) {
     ostringstream exprEmissionStream;
     exprEmissionStream << EmitExpr(stackIdx, env, lhs)
 
@@ -354,29 +354,29 @@ string EmitFxCmp(int stackIdx, TEnvironment env, string lhs, string rhs,
     return exprEmissionStream.str();
 }
 
-string EmitFxEq(int stackIdx, TEnvironment env, string lhs, string rhs,
+string EmitIsEq(int stackIdx, TEnvironment env, string lhs, string rhs,
                 bool isTail) {
-    return EmitFxCmp(stackIdx, env, lhs, rhs, "sete", isTail);
+    return EmitCmp(stackIdx, env, lhs, rhs, "sete", isTail);
 }
 
 string EmitFxLT(int stackIdx, TEnvironment env, string lhs, string rhs,
                 bool isTail) {
-    return EmitFxCmp(stackIdx, env, lhs, rhs, "setl", isTail);
+    return EmitCmp(stackIdx, env, lhs, rhs, "setl", isTail);
 }
 
 string EmitFxLE(int stackIdx, TEnvironment env, string lhs, string rhs,
                 bool isTail) {
-    return EmitFxCmp(stackIdx, env, lhs, rhs, "setle", isTail);
+    return EmitCmp(stackIdx, env, lhs, rhs, "setle", isTail);
 }
 
 string EmitFxGT(int stackIdx, TEnvironment env, string lhs, string rhs,
                 bool isTail) {
-    return EmitFxCmp(stackIdx, env, lhs, rhs, "setg", isTail);
+    return EmitCmp(stackIdx, env, lhs, rhs, "setg", isTail);
 }
 
 string EmitFxGE(int stackIdx, TEnvironment env, string lhs, string rhs,
                 bool isTail) {
-    return EmitFxCmp(stackIdx, env, lhs, rhs, "setge", isTail);
+    return EmitCmp(stackIdx, env, lhs, rhs, "setge", isTail);
 }
 
 string EmitCons(int stackIdx, TEnvironment env, string first, string second,
@@ -753,11 +753,11 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
         static unordered_map<string, TBinaryPrimitiveEmitter> binaryEmitters{
             {"fx+", EmitFxAdd},         {"fx-", EmitFxSub},
             {"fx*", EmitFxMul},         {"fxlogor", EmitFxLogOr},
-            {"fxlogand", EmitFxLogAnd}, {"fx=", EmitFxEq},
+            {"fxlogand", EmitFxLogAnd}, {"fx=", EmitIsEq},
             {"fx<", EmitFxLT},          {"fx<=", EmitFxLE},
             {"fx>", EmitFxGT},          {"fx>=", EmitFxGE},
             {"cons", EmitCons},         {"set-car!", EmitSetCar},
-            {"set-cdr!", EmitSetCdr}};
+            {"set-cdr!", EmitSetCdr},   {"eq?", EmitIsEq}};
         assert(binaryEmitters[primitiveName] != nullptr);
         return binaryEmitters[primitiveName](stackIdx, env, args[0], args[1],
                                              isTail);
