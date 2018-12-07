@@ -533,6 +533,25 @@ bool TryParseLetrec(string expr, TBindings *outBindings, string *outLetBody) {
            TryParseLetBody(expr, idx, outLetBody);
 }
 
+bool TryParseBegin(string expr, vector<string> *outExprList) {
+    if (expr.size() < 7) {
+        return false;
+    }
+
+    if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+        return false;
+    }
+
+    if (expr[1] != 'b' || expr[2] != 'e' || expr[3] != 'g' || expr[4] != 'i' ||
+        expr[5] != 'n') {
+        return false;
+    }
+
+    size_t idx = 6;
+
+    return TryParseVariableNumOfSubExpr(expr, idx, outExprList);
+}
+
 bool IsExpr(string expr) {
     return IsImmediate(expr) || IsVarName(expr) ||
            TryParseUnaryPrimitive(expr) || TryParseBinaryPrimitive(expr) ||

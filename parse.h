@@ -36,6 +36,9 @@ bool TryParseProcCallExpr(std::string expr, std::string *outProcName = nullptr,
                           std::vector<std::string> *outParams = nullptr);
 bool TryParseLetrec(std::string expr, TBindings *outBindings = nullptr,
                     std::string *outLetBody = nullptr);
+
+bool TryParseBegin(std::string expr,
+                   std::vector<std::string> *outExprList = nullptr);
 bool IsExpr(std::string expr);
 
 #endif
