@@ -81,7 +81,7 @@ string EmitFxAddImmediate(int stackIdx, TEnvironment env, string fxAddArg,
                        << "    addq $" << ImmediateRep(fxAddImmediate)
                        << ", %rax\n"
 
-                       << (isTail ? "ret\n" : "");
+                       << (isTail ? "    ret\n" : "");
 
     return exprEmissionStream.str();
 }
@@ -102,7 +102,7 @@ string EmitFixNumToChar(int stackIdx, TEnvironment env, string fixNumToCharArg,
     exprEmissionStream << EmitExpr(stackIdx, env, fixNumToCharArg)
                        << "    shlq $" << (CharShift - FxShift) << ", %rax\n"
                        << "    orq $" << CharTag << ", %rax\n"
-                       << (isTail ? "ret\n" : "");
+                       << (isTail ? "    ret\n" : "");
 
     return exprEmissionStream.str();
 }
@@ -112,7 +112,7 @@ string EmitCharToFixNum(int stackIdx, TEnvironment env, string charToFixNumArg,
     ostringstream exprEmissionStream;
     exprEmissionStream << EmitExpr(stackIdx, env, charToFixNumArg)
                        << "    shrq $" << (CharShift - FxShift) << ", %rax\n"
-                       << (isTail ? "ret\n" : "");
+                       << (isTail ? "    ret\n" : "");
 
     return exprEmissionStream.str();
 }
@@ -134,7 +134,7 @@ string EmitIsFixNum(int stackIdx, TEnvironment env, string isFixNumArg,
 
                        << "    or $" << BoolF << ", %al\n"
 
-                       << (isTail ? "ret\n" : "");
+                       << (isTail ? "    ret\n" : "");
 
     return exprEmissionStream.str();
 }
@@ -148,7 +148,7 @@ string EmitIsFxZero(int stackIdx, TEnvironment env, string isFxZeroArg,
                        << "    movzbq %al, %rax\n"
                        << "    sal $" << BoolBit << ", %al\n"
                        << "    or $" << BoolF << ", %al\n"
-                       << (isTail ? "ret\n" : "");
+                       << (isTail ? "    ret\n" : "");
 
     return exprEmissionStream.str();
 }
@@ -168,7 +168,7 @@ string EmitIsNull(int stackIdx, TEnvironment env, string isNullArg,
 
                        << "    or $" << BoolF << ", %al\n"
 
-                       << (isTail ? "ret\n" : "");
+                       << (isTail ? "    ret\n" : "");
 
     return exprEmissionStream.str();
 }
@@ -190,7 +190,7 @@ string EmitIsBoolean(int stackIdx, TEnvironment env, string isBooleanArg,
 
                        << "    or $" << BoolF << ", %al\n"
 
-                       << (isTail ? "ret\n" : "");
+                       << (isTail ? "    ret\n" : "");
 
     return exprEmissionStream.str();
 }
@@ -212,7 +212,7 @@ string EmitIsChar(int stackIdx, TEnvironment env, string isCharArg,
 
                        << "    or $" << BoolF << ", %al\n"
 
-                       << (isTail ? "ret\n" : "");
+                       << (isTail ? "    ret\n" : "");
 
     return exprEmissionStream.str();
 }
@@ -231,7 +231,7 @@ string EmitNot(int stackIdx, TEnvironment env, string notArg, bool isTail) {
 
                        << "    or $" << BoolF << ", %al\n"
 
-                       << (isTail ? "ret\n" : "");
+                       << (isTail ? "    ret\n" : "");
 
     return exprEmissionStream.str();
 }
@@ -243,7 +243,7 @@ string EmitFxLogNot(int stackIdx, TEnvironment env, string fxLogNotArg,
 
                        << "    xor $" << FxMaskNeg << ", %rax\n"
 
-                       << (isTail ? "ret\n" : "");
+                       << (isTail ? "    ret\n" : "");
 
     return exprEmissionStream.str();
 }
@@ -259,7 +259,7 @@ string EmitFxAdd(int stackIdx, TEnvironment env, string lhs, string rhs,
 
                        << "    addq " << stackIdx << "(%rsp), %rax\n"
 
-                       << (isTail ? "ret\n" : "");
+                       << (isTail ? "    ret\n" : "");
 
     return exprEmissionStream.str();
 }
@@ -275,7 +275,7 @@ string EmitFxSub(int stackIdx, TEnvironment env, string lhs, string rhs,
 
                        << "    subq " << stackIdx << "(%rsp), %rax\n"
 
-                       << (isTail ? "ret\n" : "");
+                       << (isTail ? "    ret\n" : "");
 
     return exprEmissionStream.str();
 }
@@ -293,7 +293,7 @@ string EmitFxMul(int stackIdx, TEnvironment env, string lhs, string rhs,
 
                        << "    imul " << stackIdx << "(%rsp), %rax\n"
 
-                       << (isTail ? "ret\n" : "");
+                       << (isTail ? "    ret\n" : "");
 
     return exprEmissionStream.str();
 }
@@ -309,7 +309,7 @@ string EmitFxLogOr(int stackIdx, TEnvironment env, string lhs, string rhs,
 
                        << "    or " << stackIdx << "(%rsp), %rax\n"
 
-                       << (isTail ? "ret\n" : "");
+                       << (isTail ? "    ret\n" : "");
 
     return exprEmissionStream.str();
 }
@@ -325,7 +325,7 @@ string EmitFxLogAnd(int stackIdx, TEnvironment env, string lhs, string rhs,
 
                        << "    and " << stackIdx << "(%rsp), %rax\n"
 
-                       << (isTail ? "ret\n" : "");
+                       << (isTail ? "    ret\n" : "");
 
     return exprEmissionStream.str();
 }
@@ -349,7 +349,7 @@ string EmitFxCmp(int stackIdx, TEnvironment env, string lhs, string rhs,
 
                        << "    or $" << BoolF << ", %al\n"
 
-                       << (isTail ? "ret\n" : "");
+                       << (isTail ? "    ret\n" : "");
 
     return exprEmissionStream.str();
 }
@@ -402,7 +402,7 @@ string EmitCons(int stackIdx, TEnvironment env, string first, string second,
 
            << "    addq $16, %rbp\n"  // Move the heap forward by pair size.
 
-           << (isTail ? "ret\n" : "");
+           << (isTail ? "    ret\n" : "");
 
     return exprOS.str();
 }
@@ -664,7 +664,7 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
     if (IsImmediate(expr)) {
         ostringstream exprEmissionStream;
         exprEmissionStream << "    movq $" << ImmediateRep(expr) << ", %rax\n"
-                           << (isTail ? "ret\n" : "");
+                           << (isTail ? "    ret\n" : "");
 
         return exprEmissionStream.str();
     }
