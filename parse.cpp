@@ -79,9 +79,11 @@ bool TryParseUnaryPrimitive(string expr, string *outPrimitiveName,
     }
 
     static vector<string> unaryPrimitiveNames{
-        "fxadd1",   "fxsub1", "fixnum->char", "char->fixnum", "fixnum?",
-        "fxzero?",  "null?",  "boolean?",     "char?",        "not",
-        "fxlognot", "pair?",  "car",          "cdr"};
+        "fxadd1",       "fxsub1",  "fixnum->char", "char->fixnum",
+        "fixnum?",      "fxzero?", "null?",        "boolean?",
+        "char?",        "not",     "fxlognot",     "pair?",
+        "car",          "cdr",     "make-vector",  "vector?",
+        "vector-length"};
 
     string primitiveName = "";
     size_t idx;
