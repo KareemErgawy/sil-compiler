@@ -513,7 +513,6 @@ string EmitIsVector(int stackIdx, TEnvironment env, string isVectorArg,
                     bool isTail) {
     ostringstream exprOS;
 
-    // TODO Reduce code duplication in this other xxx? primitives.
     exprOS << EmitExpr(stackIdx, env, isVectorArg)
 
            << "    and $" << VectorMask << ", %al\n"
@@ -527,6 +526,19 @@ string EmitIsVector(int stackIdx, TEnvironment env, string isVectorArg,
            << "    sal $" << BoolBit << ", %al\n"
 
            << "    or $" << BoolF << ", %al\n"
+
+           << (isTail ? "    ret\n" : "");
+
+    return exprOS.str();
+}
+
+string EmitVectorLength(int stackIdx, TEnvironment env, string expr,
+                        bool isTail) {
+    ostringstream exprOS;
+
+    exprOS << EmitExpr(stackIdx, env, expr)
+
+           << "    movq -" << VectorTag << "(%rax), %rax\n"
 
            << (isTail ? "    ret\n" : "");
 
@@ -792,7 +804,8 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
             {"car", EmitCar},
             {"cdr", EmitCdr},
             {"make-vector", EmitMakeVector},
-            {"vector?", EmitIsVector}};
+            {"vector?", EmitIsVector},
+            {"vector-length", EmitVectorLength}};
         assert(unaryEmitters[primitiveName] != nullptr);
         return unaryEmitters[primitiveName](stackIdx, env, arg, isTail);
     }
