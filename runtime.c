@@ -19,6 +19,9 @@ const unsigned int CharTag = 0x0F;
 const unsigned int PairMask = 0x07;
 const unsigned int PairTag = 0x01;
 
+const unsigned int VectorMask = 0x07;
+const unsigned int VectorTag = 0x05;
+
 typedef unsigned long ptr;
 
 char* gHeap;
@@ -43,7 +46,7 @@ static void print_char(char c) {
 
 static void print_ptr(ptr x, int parentIsPair) {
     if ((x & FxMask) == FxTag) {
-        printf("%d", ((int)x) >> FxShift);
+        printf("%ld", ((long)x) >> FxShift);
     } else if (x == BoolF) {
         printf("#f");
     } else if (x == BoolT) {
@@ -78,6 +81,19 @@ static void print_ptr(ptr x, int parentIsPair) {
         if (!parentIsPair) {
             printf(")");
         }
+    } else if ((x & VectorMask) == VectorTag) {
+        ptr length = ((ptr*)(x - VectorTag))[0] >> FxShift;
+        printf("#(");
+
+        for (int i = 0; i < length; ++i) {
+            print_ptr(((ptr*)(x - VectorTag))[i + 1], 0);
+
+            if (i < length - 1) {
+                printf(" ");
+            }
+        }
+
+        printf(")");
     } else {
         printf("#<unknown 0x%08lx>", x);
     }
