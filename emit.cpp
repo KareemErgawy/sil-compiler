@@ -484,6 +484,55 @@ string EmitSetCdr(int stackIdx, TEnvironment env, string oldPair, string newCdr,
     return EmitSetPairElement(stackIdx, env, oldPair, newCdr, isTail, 7);
 }
 
+string EmitMakeVector(int stackIdx, TEnvironment env, string lengthExpr,
+                      bool isTail) {
+    ostringstream exprOS;
+
+    exprOS << EmitExpr(stackIdx, env, lengthExpr)
+
+           << "    movq %rax, (%rbp)\n"
+
+           << "    imul $" << WordSize << ", %rax\n"
+
+           << "    addq $" << WordSize << ", %rax\n"
+
+           << "    movq %rbp, %rbx\n"
+
+           << "    addq %rax, %rbp\n"
+
+           << "    movq %rbx, %rax\n"
+
+           << "    orq $" << VectorTag << ", %rax\n"
+
+           << (isTail ? "    ret\n" : "");
+
+    return exprOS.str();
+}
+
+string EmitIsVector(int stackIdx, TEnvironment env, string isVectorArg,
+                    bool isTail) {
+    ostringstream exprOS;
+
+    // TODO Reduce code duplication in this other xxx? primitives.
+    exprOS << EmitExpr(stackIdx, env, isVectorArg)
+
+           << "    and $" << VectorMask << ", %al\n"
+
+           << "    cmp $" << VectorTag << ", %al\n"
+
+           << "    sete %al\n"
+
+           << "    movzbq %al, %rax\n"
+
+           << "    sal $" << BoolBit << ", %al\n"
+
+           << "    or $" << BoolF << ", %al\n"
+
+           << (isTail ? "    ret\n" : "");
+
+    return exprOS.str();
+}
+
 string EmitIfExpr(int stackIdx, TEnvironment env, string cond, string conseq,
                   string alt, bool isTail) {
     string altLabel = UniqueLabel();
@@ -741,7 +790,9 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
             {"fxlognot", EmitFxLogNot},
             {"pair?", EmitIsPair},
             {"car", EmitCar},
-            {"cdr", EmitCdr}};
+            {"cdr", EmitCdr},
+            {"make-vector", EmitMakeVector},
+            {"vector?", EmitIsVector}};
         assert(unaryEmitters[primitiveName] != nullptr);
         return unaryEmitters[primitiveName](stackIdx, env, arg, isTail);
     }

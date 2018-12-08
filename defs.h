@@ -36,6 +36,9 @@ const unsigned int CharTag = 0x0F;
 const unsigned int PairMask = 0x07;
 const unsigned int PairTag = 0x01;
 
+const unsigned int VectorMask = 0x07;
+const unsigned int VectorTag = 0x05;
+
 const int WordSize = 8;
 
 const int FixNumBits = WordSize * 8 - FxShift;
