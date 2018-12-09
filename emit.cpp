@@ -463,11 +463,11 @@ string EmitSetPairElement(int stackIdx, TEnvironment env, string oldPair,
 
            << EmitExpr(stackIdx - WordSize, env, oldPair)
 
-           << "    movq %rax, %rbx\n"
+           << "    movq %rax, %r8\n"
 
            << EmitStackLoad(stackIdx)
 
-           << "    movq %rax, " << relOffset << "(%rbx)\n"
+           << "    movq %rax, " << relOffset << "(%r8)\n"
 
            << (isTail ? "    ret\n" : "");
 
@@ -496,11 +496,11 @@ string EmitMakeVector(int stackIdx, TEnvironment env, string lengthExpr,
 
            << "    addq $" << WordSize << ", %rax\n"
 
-           << "    movq %rbp, %rbx\n"
+           << "    movq %rbp, %r8\n"
 
            << "    addq %rax, %rbp\n"
 
-           << "    movq %rbx, %rax\n"
+           << "    movq %r8, %rax\n"
 
            << "    orq $" << VectorTag << ", %rax\n"
 
