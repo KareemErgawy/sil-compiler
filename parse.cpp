@@ -208,8 +208,9 @@ bool TryParseBinaryPrimitive(string expr, string *outPrimitiveName,
     }
 
     static vector<string> binaryPrimitiveNames{
-        "fx+",  "fx-", "fx*",  "fxlogor", "fxlogand", "fx=",      "fx<",
-        "fx<=", "fx>", "fx>=", "cons",    "set-car!", "set-cdr!", "eq?"};
+        "fx+",  "fx-",      "fx*",      "fxlogor", "fxlogand",
+        "fx=",  "fx<",      "fx<=",     "fx>",     "fx>=",
+        "cons", "set-car!", "set-cdr!", "eq?",     "vector-ref"};
 
     string primitiveName = "";
     size_t idx;

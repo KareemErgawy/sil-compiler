@@ -546,6 +546,7 @@ string EmitVectorLength(int stackIdx, TEnvironment env, string expr,
 
     return exprOS.str();
 }
+
 string EmitVectorSet(int stackIdx, TEnvironment env, string vec, string idx,
                      string val, bool isTail) {
     ostringstream exprOS;
@@ -576,6 +577,34 @@ string EmitVectorSet(int stackIdx, TEnvironment env, string vec, string idx,
 
     return exprOS.str();
 }
+
+string EmitVectorRef(int stackIdx, TEnvironment env, string vec, string idx,
+                     bool isTail) {
+    ostringstream exprOS;
+
+    exprOS << EmitExpr(stackIdx, env, idx)
+
+           << "    sarq $" << FxShift << ", %rax\n"
+
+           << "    imul $" << WordSize << ", %rax\n"
+
+           << "    addq $" << WordSize << ", %rax\n"
+
+           << "    movq %rax, %r8\n"
+
+           << EmitExpr(stackIdx, env, vec)
+
+           << "    subq $" << VectorTag << ", %rax\n"
+
+           << "    addq %r8, %rax\n"
+
+           << "    movq (%rax), %rax\n"
+
+           << (isTail ? "    ret\n" : "");
+
+    return exprOS.str();
+}
+
 string EmitIfExpr(int stackIdx, TEnvironment env, string cond, string conseq,
                   string alt, bool isTail) {
     string altLabel = UniqueLabel();
@@ -846,13 +875,21 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
     if (TryParseBinaryPrimitive(expr, &primitiveName, &args)) {
         assert(args.size() == 2);
         static unordered_map<string, TBinaryPrimitiveEmitter> binaryEmitters{
-            {"fx+", EmitFxAdd},         {"fx-", EmitFxSub},
-            {"fx*", EmitFxMul},         {"fxlogor", EmitFxLogOr},
-            {"fxlogand", EmitFxLogAnd}, {"fx=", EmitIsEq},
-            {"fx<", EmitFxLT},          {"fx<=", EmitFxLE},
-            {"fx>", EmitFxGT},          {"fx>=", EmitFxGE},
-            {"cons", EmitCons},         {"set-car!", EmitSetCar},
-            {"set-cdr!", EmitSetCdr},   {"eq?", EmitIsEq}};
+            {"fx+", EmitFxAdd},
+            {"fx-", EmitFxSub},
+            {"fx*", EmitFxMul},
+            {"fxlogor", EmitFxLogOr},
+            {"fxlogand", EmitFxLogAnd},
+            {"fx=", EmitIsEq},
+            {"fx<", EmitFxLT},
+            {"fx<=", EmitFxLE},
+            {"fx>", EmitFxGT},
+            {"fx>=", EmitFxGE},
+            {"cons", EmitCons},
+            {"set-car!", EmitSetCar},
+            {"set-cdr!", EmitSetCdr},
+            {"eq?", EmitIsEq},
+            {"vector-ref", EmitVectorRef}};
         assert(binaryEmitters[primitiveName] != nullptr);
         return binaryEmitters[primitiveName](stackIdx, env, args[0], args[1],
                                              isTail);
