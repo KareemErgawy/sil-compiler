@@ -39,6 +39,8 @@ bool TryParseLetrec(std::string expr, TBindings *outBindings = nullptr,
 
 bool TryParseBegin(std::string expr,
                    std::vector<std::string> *outExprList = nullptr);
+bool TryParseVectorSet(std::string expr,
+                       std::vector<std::string> *outSetVecParts = nullptr);
 bool IsExpr(std::string expr);
 
 #endif

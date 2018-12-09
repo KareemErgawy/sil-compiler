@@ -492,6 +492,8 @@ string EmitMakeVector(int stackIdx, TEnvironment env, string lengthExpr,
 
            << "    movq %rax, (%rbp)\n"
 
+           << "    sarq $" << FxShift << ", %rax\n"
+
            << "    imul $" << WordSize << ", %rax\n"
 
            << "    addq $" << WordSize << ", %rax\n"
@@ -544,7 +546,36 @@ string EmitVectorLength(int stackIdx, TEnvironment env, string expr,
 
     return exprOS.str();
 }
+string EmitVectorSet(int stackIdx, TEnvironment env, string vec, string idx,
+                     string val, bool isTail) {
+    ostringstream exprOS;
 
+    exprOS << EmitExpr(stackIdx, env, val)
+
+           << "    movq %rax, %r8\n"
+
+           << EmitExpr(stackIdx, env, idx)
+
+           << "    sarq $" << FxShift << ", %rax\n"
+
+           << "    imul $" << WordSize << ", %rax\n"
+
+           << "    addq $" << WordSize << ", %rax\n"
+
+           << "    movq %rax, %r9\n"
+
+           << EmitExpr(stackIdx, env, vec)
+
+           << "    subq $" << VectorTag << ", %rax\n"
+
+           << "    addq %r9, %rax\n"
+
+           << "    movq %r8, (%rax)\n"
+
+           << (isTail ? "    ret\n" : "");
+
+    return exprOS.str();
+}
 string EmitIfExpr(int stackIdx, TEnvironment env, string cond, string conseq,
                   string alt, bool isTail) {
     string altLabel = UniqueLabel();
@@ -865,6 +896,13 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
 
     if (TryParseBegin(expr, &beginExprList)) {
         return EmitBegin(stackIdx, env, beginExprList, isTail);
+    }
+
+    vector<string> setVecParts;
+
+    if (TryParseVectorSet(expr, &setVecParts)) {
+        return EmitVectorSet(stackIdx, env, setVecParts[0], setVecParts[1],
+                             setVecParts[2], isTail);
     }
 
     string procName;

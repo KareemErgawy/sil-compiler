@@ -550,12 +550,32 @@ bool TryParseBegin(string expr, vector<string> *outExprList) {
     return TryParseVariableNumOfSubExpr(expr, idx, outExprList);
 }
 
+bool TryParseVectorSet(string expr, vector<string> *outSetVecParts) {
+    string syntaxElementName = "vector-set!";
+    if (expr.size() < (syntaxElementName.size() + 2)) {
+        return false;
+    }
+
+    if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+        return false;
+    }
+
+    if (expr.substr(1, syntaxElementName.size()) != syntaxElementName) {
+        return false;
+    }
+
+    size_t idx = syntaxElementName.size() + 1;
+
+    return TryParseVariableNumOfSubExpr(expr, idx, outSetVecParts, 3);
+}
+
 bool IsExpr(string expr) {
     return IsImmediate(expr) || IsVarName(expr) ||
            TryParseUnaryPrimitive(expr) || TryParseBinaryPrimitive(expr) ||
            TryParseIfExpr(expr) || TryParseAndExpr(expr) ||
            TryParseOrExpr(expr) || TryParseLetExpr(expr) ||
            TryParseLetAsteriskExpr(expr) || TryParseLambda(expr) ||
-           TryParseBegin(expr) || TryParseProcCallExpr(expr);
+           TryParseBegin(expr) || TryParseVectorSet(expr) ||
+           TryParseProcCallExpr(expr);
 }
 
