@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/mman.h>
@@ -21,6 +22,9 @@ const unsigned int PairTag = 0x01;
 
 const unsigned int VectorMask = 0x07;
 const unsigned int VectorTag = 0x05;
+
+const unsigned int StringMask = 0x07;
+const unsigned int StringTag = 0x06;
 
 typedef unsigned long ptr;
 
@@ -46,7 +50,9 @@ static void print_char(char c) {
 
 static void print_ptr(ptr x, int parentIsPair) {
     if ((x & FxMask) == FxTag) {
-        printf("%ld", ((long)x) >> FxShift);
+        // TODO Examine why casting to long causes fx- to fail on boundary
+        // cases.
+        printf("%d", ((int)x) >> FxShift);
     } else if (x == BoolF) {
         printf("#f");
     } else if (x == BoolT) {
@@ -94,6 +100,17 @@ static void print_ptr(ptr x, int parentIsPair) {
         }
 
         printf(")");
+    } else if ((x & StringMask) == StringTag) {
+        ptr length = ((ptr*)(x - StringTag))[0] >> FxShift;
+        printf("\\\"");
+
+        for (int i = 0; i < length; ++i) {
+            assert((((ptr*)(x - StringTag))[i + 1] & CharMask) == CharTag);
+            char c = (char)(((ptr*)(x - StringTag))[i + 1] >> CharShift);
+            printf("%c", c);
+        }
+
+        printf("\\\"");
     } else {
         printf("#<unknown 0x%08lx>", x);
     }

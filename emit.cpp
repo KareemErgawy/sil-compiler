@@ -359,6 +359,11 @@ string EmitIsEq(int stackIdx, TEnvironment env, string lhs, string rhs,
     return EmitCmp(stackIdx, env, lhs, rhs, "sete", isTail);
 }
 
+string EmitIsCharEq(int stackIdx, TEnvironment env, string lhs, string rhs,
+                    bool isTail) {
+    return EmitCmp(stackIdx, env, lhs, rhs, "sete", isTail);
+}
+
 string EmitFxLT(int stackIdx, TEnvironment env, string lhs, string rhs,
                 bool isTail) {
     return EmitCmp(stackIdx, env, lhs, rhs, "setl", isTail);
@@ -605,6 +610,131 @@ string EmitVectorRef(int stackIdx, TEnvironment env, string vec, string idx,
     return exprOS.str();
 }
 
+// TODO Remove duplication between string and vector primitives.
+string EmitMakeString(int stackIdx, TEnvironment env, string lengthExpr,
+                      bool isTail) {
+    ostringstream exprOS;
+
+    exprOS << EmitExpr(stackIdx, env, lengthExpr)
+
+           << "    movq %rax, (%rbp)\n"
+
+           << "    sarq $" << FxShift << ", %rax\n"
+
+           << "    subq $1, %rax\n"  // Calculates: (((len-1)/8) * 8) + 8 + 8
+
+           << "    sarq $" << WordSizeLg2 << ", %rax\n"
+
+           << "    imul $" << WordSize << ", %rax\n"
+
+           << "    addq $" << (2 * WordSize) << ", %rax\n"
+
+           << "    movq %rbp, %r8\n"
+
+           << "    addq %rax, %rbp\n"
+
+           << "    movq %r8, %rax\n"
+
+           << "    orq $" << StringTag << ", %rax\n"
+
+           << (isTail ? "    ret\n" : "");
+
+    return exprOS.str();
+}
+
+string EmitIsString(int stackIdx, TEnvironment env, string isVectorArg,
+                    bool isTail) {
+    ostringstream exprOS;
+
+    exprOS << EmitExpr(stackIdx, env, isVectorArg)
+
+           << "    and $" << StringMask << ", %al\n"
+
+           << "    cmp $" << StringTag << ", %al\n"
+
+           << "    sete %al\n"
+
+           << "    movzbq %al, %rax\n"
+
+           << "    sal $" << BoolBit << ", %al\n"
+
+           << "    or $" << BoolF << ", %al\n"
+
+           << (isTail ? "    ret\n" : "");
+
+    return exprOS.str();
+}
+
+string EmitStringLength(int stackIdx, TEnvironment env, string expr,
+                        bool isTail) {
+    ostringstream exprOS;
+
+    exprOS << EmitExpr(stackIdx, env, expr)
+
+           << "    movq -" << StringTag << "(%rax), %rax\n"
+
+           << (isTail ? "    ret\n" : "");
+
+    return exprOS.str();
+}
+
+string EmitStringSet(int stackIdx, TEnvironment env, string str, string idx,
+                     string val, bool isTail) {
+    ostringstream exprOS;
+
+    exprOS << EmitExpr(stackIdx, env, val)
+
+           << "    movq %rax, %r8\n"
+
+           << EmitExpr(stackIdx, env, idx)
+
+           << "    sarq $" << FxShift << ", %rax\n"
+
+           << "    imul $" << WordSize << ", %rax\n"
+
+           << "    addq $" << WordSize << ", %rax\n"
+
+           << "    movq %rax, %r9\n"
+
+           << EmitExpr(stackIdx, env, str)
+
+           << "    subq $" << StringTag << ", %rax\n"
+
+           << "    addq %r9, %rax\n"
+
+           << "    movq %r8, (%rax)\n"
+
+           << (isTail ? "    ret\n" : "");
+
+    return exprOS.str();
+}
+
+string EmitStringRef(int stackIdx, TEnvironment env, string str, string idx,
+                     bool isTail) {
+    ostringstream exprOS;
+
+    exprOS << EmitExpr(stackIdx, env, idx)
+
+           << "    sarq $" << FxShift << ", %rax\n"
+
+           << "    imul $" << WordSize << ", %rax\n"
+
+           << "    addq $" << WordSize << ", %rax\n"
+
+           << "    movq %rax, %r8\n"
+
+           << EmitExpr(stackIdx, env, str)
+
+           << "    subq $" << StringTag << ", %rax\n"
+
+           << "    addq %r8, %rax\n"
+
+           << "    movq (%rax), %rax\n"
+
+           << (isTail ? "    ret\n" : "");
+
+    return exprOS.str();
+}
 string EmitIfExpr(int stackIdx, TEnvironment env, string cond, string conseq,
                   string alt, bool isTail) {
     string altLabel = UniqueLabel();
@@ -865,7 +995,10 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
             {"cdr", EmitCdr},
             {"make-vector", EmitMakeVector},
             {"vector?", EmitIsVector},
-            {"vector-length", EmitVectorLength}};
+            {"vector-length", EmitVectorLength},
+            {"make-string", EmitMakeString},
+            {"string?", EmitIsString},
+            {"string-length", EmitStringLength}};
         assert(unaryEmitters[primitiveName] != nullptr);
         return unaryEmitters[primitiveName](stackIdx, env, arg, isTail);
     }
@@ -889,7 +1022,9 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
             {"set-car!", EmitSetCar},
             {"set-cdr!", EmitSetCdr},
             {"eq?", EmitIsEq},
-            {"vector-ref", EmitVectorRef}};
+            {"vector-ref", EmitVectorRef},
+            {"string-ref", EmitStringRef},
+            {"char=", EmitIsCharEq}};
         assert(binaryEmitters[primitiveName] != nullptr);
         return binaryEmitters[primitiveName](stackIdx, env, args[0], args[1],
                                              isTail);
@@ -940,6 +1075,13 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
     if (TryParseVectorSet(expr, &setVecParts)) {
         return EmitVectorSet(stackIdx, env, setVecParts[0], setVecParts[1],
                              setVecParts[2], isTail);
+    }
+
+    vector<string> setStrParts;
+
+    if (TryParseStringSet(expr, &setStrParts)) {
+        return EmitStringSet(stackIdx, env, setStrParts[0], setStrParts[1],
+                             setStrParts[2], isTail);
     }
 
     string procName;

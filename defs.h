@@ -39,7 +39,11 @@ const unsigned int PairTag = 0x01;
 const unsigned int VectorMask = 0x07;
 const unsigned int VectorTag = 0x05;
 
+const unsigned int StringMask = 0x07;
+const unsigned int StringTag = 0x06;
+
 const int WordSize = 8;
+const int WordSizeLg2 = 3;
 
 const int FixNumBits = WordSize * 8 - FxShift;
 const long FxLower = -pow(2, FixNumBits - 1);

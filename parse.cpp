@@ -79,11 +79,11 @@ bool TryParseUnaryPrimitive(string expr, string *outPrimitiveName,
     }
 
     static vector<string> unaryPrimitiveNames{
-        "fxadd1",       "fxsub1",  "fixnum->char", "char->fixnum",
-        "fixnum?",      "fxzero?", "null?",        "boolean?",
-        "char?",        "not",     "fxlognot",     "pair?",
-        "car",          "cdr",     "make-vector",  "vector?",
-        "vector-length"};
+        "fxadd1",        "fxsub1",      "fixnum->char", "char->fixnum",
+        "fixnum?",       "fxzero?",     "null?",        "boolean?",
+        "char?",         "not",         "fxlognot",     "pair?",
+        "car",           "cdr",         "make-vector",  "vector?",
+        "vector-length", "make-string", "string?",      "string-length"};
 
     string primitiveName = "";
     size_t idx;
@@ -208,9 +208,9 @@ bool TryParseBinaryPrimitive(string expr, string *outPrimitiveName,
     }
 
     static vector<string> binaryPrimitiveNames{
-        "fx+",  "fx-",      "fx*",      "fxlogor", "fxlogand",
-        "fx=",  "fx<",      "fx<=",     "fx>",     "fx>=",
-        "cons", "set-car!", "set-cdr!", "eq?",     "vector-ref"};
+        "fx+",      "fx-",  "fx*",        "fxlogor",    "fxlogand", "fx=",
+        "fx<",      "fx<=", "fx>",        "fx>=",       "cons",     "set-car!",
+        "set-cdr!", "eq?",  "vector-ref", "string-ref", "char="};
 
     string primitiveName = "";
     size_t idx;
@@ -570,6 +570,25 @@ bool TryParseVectorSet(string expr, vector<string> *outSetVecParts) {
     return TryParseVariableNumOfSubExpr(expr, idx, outSetVecParts, 3);
 }
 
+bool TryParseStringSet(string expr, vector<string> *outSetStrParts) {
+    string syntaxElementName = "string-set!";
+    if (expr.size() < (syntaxElementName.size() + 2)) {
+        return false;
+    }
+
+    if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+        return false;
+    }
+
+    if (expr.substr(1, syntaxElementName.size()) != syntaxElementName) {
+        return false;
+    }
+
+    size_t idx = syntaxElementName.size() + 1;
+
+    return TryParseVariableNumOfSubExpr(expr, idx, outSetStrParts, 3);
+}
+
 bool IsExpr(string expr) {
     return IsImmediate(expr) || IsVarName(expr) ||
            TryParseUnaryPrimitive(expr) || TryParseBinaryPrimitive(expr) ||
@@ -577,6 +596,6 @@ bool IsExpr(string expr) {
            TryParseOrExpr(expr) || TryParseLetExpr(expr) ||
            TryParseLetAsteriskExpr(expr) || TryParseLambda(expr) ||
            TryParseBegin(expr) || TryParseVectorSet(expr) ||
-           TryParseProcCallExpr(expr);
+           TryParseStringSet(expr) || TryParseProcCallExpr(expr);
 }
 

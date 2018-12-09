@@ -41,6 +41,9 @@ bool TryParseBegin(std::string expr,
                    std::vector<std::string> *outExprList = nullptr);
 bool TryParseVectorSet(std::string expr,
                        std::vector<std::string> *outSetVecParts = nullptr);
+bool TryParseStringSet(std::string expr,
+                       std::vector<std::string> *outSetStrParts = nullptr);
+
 bool IsExpr(std::string expr);
 
 #endif
