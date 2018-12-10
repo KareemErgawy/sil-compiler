@@ -68,13 +68,13 @@ bool IsProperlyParenthesized(string expr) {
     return expr[0] == '(' && expr[expr.size() - 1] == ')';
 }
 
-bool TryParseSubExpr(string expr, size_t subExprStart,
+bool TryParseSubExpr(string expr, int subExprStart,
                      string *outSubExpr = nullptr,
-                     size_t *outSubExprEnd = nullptr) {
+                     int *outSubExprEnd = nullptr) {
     // The (- 1) accounts for the closing ) of expr.
     assert(subExprStart < expr.size() - 1);
 
-    size_t idx = subExprStart;
+    int idx = subExprStart;
     string subExpr;
 
     if (expr[idx] != '(') {
@@ -110,7 +110,7 @@ bool TryParseSubExpr(string expr, size_t subExprStart,
     return IsExpr(subExpr);
 }
 
-bool SkipSpaceAndCheckIfEndOfExpr(string expr, size_t *idx) {
+bool SkipSpaceAndCheckIfEndOfExpr(string expr, int *idx) {
     assert(*idx < expr.size());
 
     for (; *idx < (expr.size() - 1) && isspace(expr[*idx]); ++*idx) {
@@ -119,14 +119,14 @@ bool SkipSpaceAndCheckIfEndOfExpr(string expr, size_t *idx) {
     return (*idx == (expr.size() - 1));
 }
 
-bool TryParseVariableNumOfSubExpr(string expr, size_t startIdx,
+bool TryParseVariableNumOfSubExpr(string expr, int startIdx,
                                   vector<string> *outSubExprs,
                                   int expectedNumSubExprs = -1) {
     if (outSubExprs != nullptr) {
         outSubExprs->clear();
     }
 
-    size_t idx = startIdx;
+    int idx = startIdx;
     int numSubExprs = 0;
 
     while (!SkipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
@@ -158,7 +158,7 @@ bool TryParsePrimitve(int arity, const vector<string> &primList, string expr,
     }
 
     string primitiveName = "";
-    size_t idx;
+    int idx;
 
     for (idx = 1; idx < (expr.size() - 1) && !isspace(expr[idx]); ++idx) {
         primitiveName = primitiveName + expr[idx];
@@ -200,56 +200,54 @@ bool TryParseBinaryPrimitive(string expr, string *outPrimitiveName,
                             outArgs);
 }
 
-bool TryParseIfExpr(string expr, vector<string> *outIfParts) {
-    if (expr.size() < 4) {
-        return false;
+int TryParseSyntaxElementPrefix(string syntaxElementName, string expr) {
+    if (expr.size() < (syntaxElementName.size() + 2)) {
+        return -1;
     }
 
     if (!IsProperlyParenthesized(expr)) {
+        return -1;
+    }
+
+    if (expr.substr(1, syntaxElementName.size()) != syntaxElementName) {
+        return -1;
+    }
+
+    return syntaxElementName.size() + 1;
+}
+
+bool TryParseIfExpr(string expr, vector<string> *outIfParts) {
+    auto idx = TryParseSyntaxElementPrefix("if", expr);
+
+    if (idx == -1) {
         return false;
     }
 
-    if (expr[1] != 'i' || expr[2] != 'f') {
-        return false;
-    }
-
-    return TryParseVariableNumOfSubExpr(expr, 3, outIfParts, 3);
+    return TryParseVariableNumOfSubExpr(expr, idx, outIfParts, 3);
 }
 
 bool TryParseAndExpr(string expr, vector<string> *outAndArgs) {
-    if (expr.size() < 5) {
+    auto idx = TryParseSyntaxElementPrefix("and", expr);
+
+    if (idx == -1) {
         return false;
     }
 
-    if (!IsProperlyParenthesized(expr)) {
-        return false;
-    }
-
-    if (expr[1] != 'a' || expr[2] != 'n' || expr[3] != 'd') {
-        return false;
-    }
-
-    return TryParseVariableNumOfSubExpr(expr, 4, outAndArgs);
+    return TryParseVariableNumOfSubExpr(expr, idx, outAndArgs);
 }
 
 bool TryParseOrExpr(string expr, vector<string> *outOrArgs) {
-    if (expr.size() < 4) {
+    auto idx = TryParseSyntaxElementPrefix("or", expr);
+
+    if (idx == -1) {
         return false;
     }
 
-    if (!IsProperlyParenthesized(expr)) {
-        return false;
-    }
-
-    if (expr[1] != 'o' || expr[2] != 'r') {
-        return false;
-    }
-
-    return TryParseVariableNumOfSubExpr(expr, 3, outOrArgs);
+    return TryParseVariableNumOfSubExpr(expr, idx, outOrArgs);
 }
 
 template <typename TBindings>
-bool TryParseLetBindings(string expr, size_t *idx, TBindings *outBindings) {
+bool TryParseLetBindings(string expr, int *idx, TBindings *outBindings) {
     assert(idx != nullptr && *idx < expr.size());
 
     if (SkipSpaceAndCheckIfEndOfExpr(expr, idx)) {
@@ -329,7 +327,7 @@ bool TryParseLetBindings(string expr, size_t *idx, TBindings *outBindings) {
     return true;
 }
 
-bool TryParseLetBody(string expr, size_t idx, vector<string> *outLetBody) {
+bool TryParseLetBody(string expr, int idx, vector<string> *outLetBody) {
     if (SkipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
         return false;
     }
@@ -339,19 +337,11 @@ bool TryParseLetBody(string expr, size_t idx, vector<string> *outLetBody) {
 
 bool TryParseLetExpr(string expr, TBindings *outBindings,
                      vector<string> *outLetBody) {
-    if (expr.size() < 5) {
+    auto idx = TryParseSyntaxElementPrefix("let", expr);
+
+    if (idx == -1) {
         return false;
     }
-
-    if (!IsProperlyParenthesized(expr)) {
-        return false;
-    }
-
-    if (expr[1] != 'l' || expr[2] != 'e' || expr[3] != 't') {
-        return false;
-    }
-
-    size_t idx = 4;
 
     return TryParseLetBindings(expr, &idx, outBindings) &&
            TryParseLetBody(expr, idx, outLetBody);
@@ -359,19 +349,11 @@ bool TryParseLetExpr(string expr, TBindings *outBindings,
 
 bool TryParseLetAsteriskExpr(string expr, TOrderedBindings *outBindings,
                              vector<string> *outLetBody) {
-    if (expr.size() < 6) {
+    auto idx = TryParseSyntaxElementPrefix("let*", expr);
+
+    if (idx == -1) {
         return false;
     }
-
-    if (!IsProperlyParenthesized(expr)) {
-        return false;
-    }
-
-    if (expr[1] != 'l' || expr[2] != 'e' || expr[3] != 't' || expr[4] != '*') {
-        return false;
-    }
-
-    size_t idx = 5;
 
     return TryParseLetBindings(expr, &idx, outBindings) &&
            TryParseLetBody(expr, idx, outLetBody);
@@ -379,20 +361,11 @@ bool TryParseLetAsteriskExpr(string expr, TOrderedBindings *outBindings,
 
 bool TryParseLambda(string expr, vector<string> *outFormalArgs,
                     string *outBody) {
-    if (expr.size() < 8) {
+    auto idx = TryParseSyntaxElementPrefix("lambda", expr);
+
+    if (idx == -1) {
         return false;
     }
-
-    if (!IsProperlyParenthesized(expr)) {
-        return false;
-    }
-
-    if (expr[1] != 'l' || expr[2] != 'a' || expr[3] != 'm' || expr[4] != 'b' ||
-        expr[5] != 'd' || expr[6] != 'a') {
-        return false;
-    }
-
-    size_t idx = 7;
 
     if (SkipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
         return false;
@@ -454,7 +427,7 @@ bool TryParseProcCallExpr(string expr, string *outProcName,
         return false;
     }
 
-    size_t idx = 1;
+    int idx = 1;
     auto separator = (expr.find(' ') == string::npos) ? ')' : ' ';
 
     auto procName = expr.substr(idx, expr.find(separator) - idx);
@@ -482,78 +455,42 @@ bool TryParseProcCallExpr(string expr, string *outProcName,
 
 bool TryParseLetrec(string expr, TBindings *outBindings,
                     vector<string> *outLetBody) {
-    if (expr.size() < 8) {
+    auto idx = TryParseSyntaxElementPrefix("letrec", expr);
+
+    if (idx == -1) {
         return false;
     }
-
-    if (!IsProperlyParenthesized(expr)) {
-        return false;
-    }
-
-    if (expr[1] != 'l' || expr[2] != 'e' || expr[3] != 't' || expr[4] != 'r' ||
-        expr[5] != 'e' || expr[6] != 'c') {
-        return false;
-    }
-
-    size_t idx = 7;
 
     return TryParseLetBindings(expr, &idx, outBindings) &&
            TryParseLetBody(expr, idx, outLetBody);
 }
 
 bool TryParseBegin(string expr, vector<string> *outExprList) {
-    if (expr.size() < 7) {
+    auto idx = TryParseSyntaxElementPrefix("begin", expr);
+
+    if (idx == -1) {
         return false;
     }
-
-    if (!IsProperlyParenthesized(expr)) {
-        return false;
-    }
-
-    if (expr[1] != 'b' || expr[2] != 'e' || expr[3] != 'g' || expr[4] != 'i' ||
-        expr[5] != 'n') {
-        return false;
-    }
-
-    size_t idx = 6;
 
     return TryParseVariableNumOfSubExpr(expr, idx, outExprList);
 }
 
 bool TryParseVectorSet(string expr, vector<string> *outSetVecParts) {
-    string syntaxElementName = "vector-set!";
-    if (expr.size() < (syntaxElementName.size() + 2)) {
+    auto idx = TryParseSyntaxElementPrefix("vector-set!", expr);
+
+    if (idx == -1) {
         return false;
     }
-
-    if (!IsProperlyParenthesized(expr)) {
-        return false;
-    }
-
-    if (expr.substr(1, syntaxElementName.size()) != syntaxElementName) {
-        return false;
-    }
-
-    size_t idx = syntaxElementName.size() + 1;
 
     return TryParseVariableNumOfSubExpr(expr, idx, outSetVecParts, 3);
 }
 
 bool TryParseStringSet(string expr, vector<string> *outSetStrParts) {
-    string syntaxElementName = "string-set!";
-    if (expr.size() < (syntaxElementName.size() + 2)) {
+    auto idx = TryParseSyntaxElementPrefix("string-set!", expr);
+
+    if (idx == -1) {
         return false;
     }
-
-    if (!IsProperlyParenthesized(expr)) {
-        return false;
-    }
-
-    if (expr.substr(1, syntaxElementName.size()) != syntaxElementName) {
-        return false;
-    }
-
-    size_t idx = syntaxElementName.size() + 1;
 
     return TryParseVariableNumOfSubExpr(expr, idx, outSetStrParts, 3);
 }
