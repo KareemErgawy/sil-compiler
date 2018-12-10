@@ -942,8 +942,8 @@ string EmitLetrecLambdas(const TBindings &lambdas) {
     return allLambdasOS.str();
 }
 
-string EmitBegin(int stackIdx, TEnvironment env, vector<string> beginExprList,
-                 bool isTail) {
+string EmitBegin(int stackIdx, TEnvironment env,
+                 const vector<string> &beginExprList, bool isTail) {
     assert(beginExprList.size() > 0);
     ostringstream exprOS;
 
@@ -1042,16 +1042,14 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
                                               isTail);
     }
 
-    vector<string> andArgs;
+    vector<string> varArgs;
 
-    if (TryParseAndExpr(expr, &andArgs)) {
-        return EmitAndExpr(stackIdx, env, andArgs, isTail);
-    }
-
-    vector<string> orArgs;
-
-    if (TryParseOrExpr(expr, &orArgs)) {
-        return EmitOrExpr(stackIdx, env, orArgs, isTail);
+    if (TryParseVariableArityPrimitive(expr, &primitiveName, &varArgs)) {
+        static unordered_map<string, TVaribaleArityPrimitiveEmitter>
+            varArityEmitters{
+                {"and", EmitAndExpr}, {"or", EmitOrExpr}, {"begin", EmitBegin}};
+        assert(varArityEmitters[primitiveName] != nullptr);
+        return varArityEmitters[primitiveName](stackIdx, env, varArgs, isTail);
     }
 
     TBindings bindings;
@@ -1066,12 +1064,6 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
 
     if (TryParseLetAsteriskExpr(expr, &bindings2, &letBody2)) {
         return EmitLetAsteriskExpr(stackIdx, env, bindings2, letBody2, isTail);
-    }
-
-    vector<string> beginExprList;
-
-    if (TryParseBegin(expr, &beginExprList)) {
-        return EmitBegin(stackIdx, env, beginExprList, isTail);
     }
 
     vector<string> setVecParts;

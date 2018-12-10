@@ -19,6 +19,9 @@ using TTernaryPrimitiveEmitter = std::string (*)(int, TEnvironment, std::string,
                                                  std::string, std::string,
                                                  bool);
 
+using TVaribaleArityPrimitiveEmitter =
+    std::string (*)(int, TEnvironment, const std::vector<std::string>&, bool);
+
 const unsigned int FxShift = 2;
 const unsigned int FxMask = 0x03;
 const int FxMaskNeg = 0xFFFFFFFC;

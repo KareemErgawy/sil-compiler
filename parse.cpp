@@ -208,6 +208,13 @@ bool TryParseTernaryPrimitive(string expr, string *outPrimitiveName,
                             outArgs);
 }
 
+bool TryParseVariableArityPrimitive(string expr, string *outPrimitiveName,
+                                    vector<string> *outArgs) {
+    static vector<string> primitiveNames{"and", "or", "begin"};
+    return TryParsePrimitve(-1, primitiveNames, expr, outPrimitiveName,
+                            outArgs);
+}
+
 int TryParseSyntaxElementPrefix(string syntaxElementName, string expr) {
     if (expr.size() < (syntaxElementName.size() + 2)) {
         return -1;
@@ -222,26 +229,6 @@ int TryParseSyntaxElementPrefix(string syntaxElementName, string expr) {
     }
 
     return syntaxElementName.size() + 1;
-}
-
-bool TryParseAndExpr(string expr, vector<string> *outAndArgs) {
-    auto idx = TryParseSyntaxElementPrefix("and", expr);
-
-    if (idx == -1) {
-        return false;
-    }
-
-    return TryParseVariableNumOfSubExpr(expr, idx, outAndArgs);
-}
-
-bool TryParseOrExpr(string expr, vector<string> *outOrArgs) {
-    auto idx = TryParseSyntaxElementPrefix("or", expr);
-
-    if (idx == -1) {
-        return false;
-    }
-
-    return TryParseVariableNumOfSubExpr(expr, idx, outOrArgs);
 }
 
 template <typename TBindings>
@@ -463,22 +450,12 @@ bool TryParseLetrec(string expr, TBindings *outBindings,
            TryParseLetBody(expr, idx, outLetBody);
 }
 
-bool TryParseBegin(string expr, vector<string> *outExprList) {
-    auto idx = TryParseSyntaxElementPrefix("begin", expr);
-
-    if (idx == -1) {
-        return false;
-    }
-
-    return TryParseVariableNumOfSubExpr(expr, idx, outExprList);
-}
-
 bool IsExpr(string expr) {
     return IsImmediate(expr) || IsVarName(expr) ||
            TryParseUnaryPrimitive(expr) || TryParseBinaryPrimitive(expr) ||
-           TryParseTernaryPrimitive(expr) || TryParseAndExpr(expr) ||
-           TryParseOrExpr(expr) || TryParseLetExpr(expr) ||
+           TryParseTernaryPrimitive(expr) ||
+           TryParseVariableArityPrimitive(expr) || TryParseLetExpr(expr) ||
            TryParseLetAsteriskExpr(expr) || TryParseLambda(expr) ||
-           TryParseBegin(expr) || TryParseProcCallExpr(expr);
+           TryParseProcCallExpr(expr);
 }
 
