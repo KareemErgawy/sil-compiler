@@ -64,13 +64,17 @@ bool IsVarName(string token) {
     return true;
 }
 
+bool IsProperlyParenthesized(string expr) {
+    return expr[0] == '(' && expr[expr.size() - 1] == ')';
+}
+
 bool TryParseUnaryPrimitive(string expr, string *outPrimitiveName,
                             string *outArg) {
     if (expr.size() < 3) {
         return false;
     }
 
-    if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+    if (!IsProperlyParenthesized(expr)) {
         return false;
     }
 
@@ -199,7 +203,7 @@ bool TryParseBinaryPrimitive(string expr, string *outPrimitiveName,
         return false;
     }
 
-    if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+    if (!IsProperlyParenthesized(expr)) {
         return false;
     }
 
@@ -232,7 +236,7 @@ bool TryParseIfExpr(string expr, vector<string> *outIfParts) {
         return false;
     }
 
-    if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+    if (!IsProperlyParenthesized(expr)) {
         return false;
     }
 
@@ -248,7 +252,7 @@ bool TryParseAndExpr(string expr, vector<string> *outAndArgs) {
         return false;
     }
 
-    if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+    if (!IsProperlyParenthesized(expr)) {
         return false;
     }
 
@@ -264,7 +268,7 @@ bool TryParseOrExpr(string expr, vector<string> *outOrArgs) {
         return false;
     }
 
-    if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+    if (!IsProperlyParenthesized(expr)) {
         return false;
     }
 
@@ -370,7 +374,7 @@ bool TryParseLetExpr(string expr, TBindings *outBindings,
         return false;
     }
 
-    if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+    if (!IsProperlyParenthesized(expr)) {
         return false;
     }
 
@@ -390,7 +394,7 @@ bool TryParseLetAsteriskExpr(string expr, TOrderedBindings *outBindings,
         return false;
     }
 
-    if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+    if (!IsProperlyParenthesized(expr)) {
         return false;
     }
 
@@ -410,7 +414,7 @@ bool TryParseLambda(string expr, vector<string> *outFormalArgs,
         return false;
     }
 
-    if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+    if (!IsProperlyParenthesized(expr)) {
         return false;
     }
 
@@ -477,7 +481,7 @@ bool TryParseProcCallExpr(string expr, string *outProcName,
         return false;
     }
 
-    if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+    if (!IsProperlyParenthesized(expr)) {
         return false;
     }
 
@@ -513,7 +517,7 @@ bool TryParseLetrec(string expr, TBindings *outBindings,
         return false;
     }
 
-    if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+    if (!IsProperlyParenthesized(expr)) {
         return false;
     }
 
@@ -533,7 +537,7 @@ bool TryParseBegin(string expr, vector<string> *outExprList) {
         return false;
     }
 
-    if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+    if (!IsProperlyParenthesized(expr)) {
         return false;
     }
 
@@ -553,7 +557,7 @@ bool TryParseVectorSet(string expr, vector<string> *outSetVecParts) {
         return false;
     }
 
-    if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+    if (!IsProperlyParenthesized(expr)) {
         return false;
     }
 
@@ -572,7 +576,7 @@ bool TryParseStringSet(string expr, vector<string> *outSetStrParts) {
         return false;
     }
 
-    if (expr[0] != '(' || expr[expr.size() - 1] != ')') {
+    if (!IsProperlyParenthesized(expr)) {
         return false;
     }
 
