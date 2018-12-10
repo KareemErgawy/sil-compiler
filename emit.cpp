@@ -1066,8 +1066,6 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
         return EmitLetAsteriskExpr(stackIdx, env, bindings2, letBody2, isTail);
     }
 
-    vector<string> setVecParts;
-
     string procName;
     vector<string> params;
 
