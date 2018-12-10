@@ -48,6 +48,16 @@ static void print_char(char c) {
     }
 }
 
+static void print_char_within_str(char c) {
+    if (c == '"') {
+        printf("\\\\\\\"");
+    } else if (c == '\\') {
+        printf("\\\\\\\\");
+    } else {
+        printf("%c", c);
+    }
+}
+
 static void print_ptr(ptr x, int parentIsPair) {
     if ((x & FxMask) == FxTag) {
         // TODO Examine why casting to long causes fx- to fail on boundary
@@ -107,7 +117,7 @@ static void print_ptr(ptr x, int parentIsPair) {
         for (int i = 0; i < length; ++i) {
             assert((((ptr*)(x - StringTag))[i + 1] & CharMask) == CharTag);
             char c = (char)(((ptr*)(x - StringTag))[i + 1] >> CharShift);
-            printf("%c", c);
+            print_char_within_str(c);
         }
 
         printf("\\\"");

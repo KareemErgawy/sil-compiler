@@ -621,13 +621,9 @@ string EmitMakeString(int stackIdx, TEnvironment env, string lengthExpr,
 
            << "    sarq $" << FxShift << ", %rax\n"
 
-           << "    subq $1, %rax\n"  // Calculates: (((len-1)/8) * 8) + 8 + 8
-
-           << "    sarq $" << WordSizeLg2 << ", %rax\n"
-
            << "    imul $" << WordSize << ", %rax\n"
 
-           << "    addq $" << (2 * WordSize) << ", %rax\n"
+           << "    addq $" << WordSize << ", %rax\n"
 
            << "    movq %rbp, %r8\n"
 
