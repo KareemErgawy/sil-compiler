@@ -21,10 +21,6 @@ bool IsBool(string token) { return token == "#f" || token == "#t"; }
 bool IsNull(string token) { return token == "()"; }
 
 bool IsChar(string token) {
-    if (token == "#\\~") {
-        int dummy = 10;
-    }
-
     if (token.size() < 3) {
         return false;
     }
