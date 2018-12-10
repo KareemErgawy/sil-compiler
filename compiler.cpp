@@ -13,12 +13,11 @@
 #include <utility>
 #include <vector>
 
-// TODO Reduce code repetition on parsing functions: TryParseUnaryPrimitive,
-// TryParseBinaryPrimitive, TryParseIfExpr, TryParseAndExpr, TryParseOrExpr.
-
 // TODO Switch emitted code to intel syntax.
 
 // TODO Parsing is too sensitive to whitespace. Make it more robust.
+
+// TODO Read the implemented Scheme standard.
 
 using namespace std;
 
