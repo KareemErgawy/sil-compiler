@@ -200,6 +200,14 @@ bool TryParseBinaryPrimitive(string expr, string *outPrimitiveName,
                             outArgs);
 }
 
+bool TryParseTernaryPrimitive(string expr, string *outPrimitiveName,
+                              vector<string> *outArgs) {
+    static vector<string> ternaryPrimitiveNames{"if", "vector-set!",
+                                                "string-set!"};
+    return TryParsePrimitve(3, ternaryPrimitiveNames, expr, outPrimitiveName,
+                            outArgs);
+}
+
 int TryParseSyntaxElementPrefix(string syntaxElementName, string expr) {
     if (expr.size() < (syntaxElementName.size() + 2)) {
         return -1;
@@ -214,16 +222,6 @@ int TryParseSyntaxElementPrefix(string syntaxElementName, string expr) {
     }
 
     return syntaxElementName.size() + 1;
-}
-
-bool TryParseIfExpr(string expr, vector<string> *outIfParts) {
-    auto idx = TryParseSyntaxElementPrefix("if", expr);
-
-    if (idx == -1) {
-        return false;
-    }
-
-    return TryParseVariableNumOfSubExpr(expr, idx, outIfParts, 3);
 }
 
 bool TryParseAndExpr(string expr, vector<string> *outAndArgs) {
@@ -475,33 +473,12 @@ bool TryParseBegin(string expr, vector<string> *outExprList) {
     return TryParseVariableNumOfSubExpr(expr, idx, outExprList);
 }
 
-bool TryParseVectorSet(string expr, vector<string> *outSetVecParts) {
-    auto idx = TryParseSyntaxElementPrefix("vector-set!", expr);
-
-    if (idx == -1) {
-        return false;
-    }
-
-    return TryParseVariableNumOfSubExpr(expr, idx, outSetVecParts, 3);
-}
-
-bool TryParseStringSet(string expr, vector<string> *outSetStrParts) {
-    auto idx = TryParseSyntaxElementPrefix("string-set!", expr);
-
-    if (idx == -1) {
-        return false;
-    }
-
-    return TryParseVariableNumOfSubExpr(expr, idx, outSetStrParts, 3);
-}
-
 bool IsExpr(string expr) {
     return IsImmediate(expr) || IsVarName(expr) ||
            TryParseUnaryPrimitive(expr) || TryParseBinaryPrimitive(expr) ||
-           TryParseIfExpr(expr) || TryParseAndExpr(expr) ||
+           TryParseTernaryPrimitive(expr) || TryParseAndExpr(expr) ||
            TryParseOrExpr(expr) || TryParseLetExpr(expr) ||
            TryParseLetAsteriskExpr(expr) || TryParseLambda(expr) ||
-           TryParseBegin(expr) || TryParseVectorSet(expr) ||
-           TryParseStringSet(expr) || TryParseProcCallExpr(expr);
+           TryParseBegin(expr) || TryParseProcCallExpr(expr);
 }
 

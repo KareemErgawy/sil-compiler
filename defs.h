@@ -15,6 +15,9 @@ using TUnaryPrimitiveEmitter = std::string (*)(int, TEnvironment, std::string,
                                                bool);
 using TBinaryPrimitiveEmitter = std::string (*)(int, TEnvironment, std::string,
                                                 std::string, bool);
+using TTernaryPrimitiveEmitter = std::string (*)(int, TEnvironment, std::string,
+                                                 std::string, std::string,
+                                                 bool);
 
 const unsigned int FxShift = 2;
 const unsigned int FxMask = 0x03;

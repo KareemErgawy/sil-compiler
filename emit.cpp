@@ -1028,12 +1028,18 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
                                              binaryArgs[1], isTail);
     }
 
-    vector<string> ifParts;
+    vector<string> ternaryArgs;
 
-    if (TryParseIfExpr(expr, &ifParts)) {
-        assert(ifParts.size() == 3);
-        return EmitIfExpr(stackIdx, env, ifParts[0], ifParts[1], ifParts[2],
-                          isTail);
+    if (TryParseTernaryPrimitive(expr, &primitiveName, &ternaryArgs)) {
+        assert(ternaryArgs.size() == 3);
+        static unordered_map<string, TTernaryPrimitiveEmitter> ternaryEmitters{
+            {"if", EmitIfExpr},
+            {"vector-set!", EmitVectorSet},
+            {"string-set!", EmitStringSet}};
+        assert(ternaryEmitters[primitiveName] != nullptr);
+        return ternaryEmitters[primitiveName](stackIdx, env, ternaryArgs[0],
+                                              ternaryArgs[1], ternaryArgs[2],
+                                              isTail);
     }
 
     vector<string> andArgs;
@@ -1069,18 +1075,6 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
     }
 
     vector<string> setVecParts;
-
-    if (TryParseVectorSet(expr, &setVecParts)) {
-        return EmitVectorSet(stackIdx, env, setVecParts[0], setVecParts[1],
-                             setVecParts[2], isTail);
-    }
-
-    vector<string> setStrParts;
-
-    if (TryParseStringSet(expr, &setStrParts)) {
-        return EmitStringSet(stackIdx, env, setStrParts[0], setStrParts[1],
-                             setStrParts[2], isTail);
-    }
 
     string procName;
     vector<string> params;

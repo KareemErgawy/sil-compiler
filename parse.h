@@ -18,8 +18,9 @@ bool TryParseUnaryPrimitive(std::string expr,
 bool TryParseBinaryPrimitive(std::string expr,
                              std::string *outPrimitiveName = nullptr,
                              std::vector<std::string> *outArgs = nullptr);
-bool TryParseIfExpr(std::string expr,
-                    std::vector<std::string> *outIfParts = nullptr);
+bool TryParseTernaryPrimitive(std::string expr,
+                              std::string *outPrimitiveName = nullptr,
+                              std::vector<std::string> *outArgs = nullptr);
 bool TryParseAndExpr(std::string expr,
                      std::vector<std::string> *outAndArgs = nullptr);
 bool TryParseOrExpr(std::string expr,
@@ -36,14 +37,8 @@ bool TryParseProcCallExpr(std::string expr, std::string *outProcName = nullptr,
                           std::vector<std::string> *outParams = nullptr);
 bool TryParseLetrec(std::string expr, TBindings *outBindings = nullptr,
                     std::vector<std::string> *outLetBody = nullptr);
-
 bool TryParseBegin(std::string expr,
                    std::vector<std::string> *outExprList = nullptr);
-bool TryParseVectorSet(std::string expr,
-                       std::vector<std::string> *outSetVecParts = nullptr);
-bool TryParseStringSet(std::string expr,
-                       std::vector<std::string> *outSetStrParts = nullptr);
-
 bool IsExpr(std::string expr);
 
 #endif
