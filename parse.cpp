@@ -68,56 +68,6 @@ bool IsProperlyParenthesized(string expr) {
     return expr[0] == '(' && expr[expr.size() - 1] == ')';
 }
 
-bool TryParseUnaryPrimitive(string expr, string *outPrimitiveName,
-                            string *outArg) {
-    if (expr.size() < 3) {
-        return false;
-    }
-
-    if (!IsProperlyParenthesized(expr)) {
-        return false;
-    }
-
-    static vector<string> unaryPrimitiveNames{
-        "fxadd1",        "fxsub1",      "fixnum->char", "char->fixnum",
-        "fixnum?",       "fxzero?",     "null?",        "boolean?",
-        "char?",         "not",         "fxlognot",     "pair?",
-        "car",           "cdr",         "make-vector",  "vector?",
-        "vector-length", "make-string", "string?",      "string-length"};
-
-    string primitiveName = "";
-    size_t idx;
-
-    for (idx = 1; idx < (expr.size() - 1) && !isspace(expr[idx]); ++idx) {
-        primitiveName = primitiveName + expr[idx];
-    }
-
-    if (find(unaryPrimitiveNames.begin(), unaryPrimitiveNames.end(),
-             primitiveName) == unaryPrimitiveNames.end()) {
-        return false;
-    }
-
-    if (outPrimitiveName != nullptr) {
-        *outPrimitiveName = primitiveName;
-    }
-
-    // No argument provided.
-    if (!isspace(expr[idx])) {
-        return false;
-    }
-
-    for (; idx < (expr.size() - 1) && isspace(expr[idx]); ++idx) {
-    }
-
-    string arg = expr.substr(idx, expr.size() - 1 - idx);
-
-    if (outArg != nullptr) {
-        *outArg = arg;
-    }
-
-    return IsExpr(arg);
-}
-
 bool TryParseSubExpr(string expr, size_t subExprStart,
                      string *outSubExpr = nullptr,
                      size_t *outSubExprEnd = nullptr) {
@@ -197,8 +147,8 @@ bool TryParseVariableNumOfSubExpr(string expr, size_t startIdx,
     return (expectedNumSubExprs == -1) || (expectedNumSubExprs == numSubExprs);
 }
 
-bool TryParseBinaryPrimitive(string expr, string *outPrimitiveName,
-                             vector<string> *outArgs) {
+bool TryParsePrimitve(int arity, const vector<string> &primList, string expr,
+                      string *outPrimitiveName, vector<string> *outArgs) {
     if (expr.size() < 3) {
         return false;
     }
@@ -207,11 +157,6 @@ bool TryParseBinaryPrimitive(string expr, string *outPrimitiveName,
         return false;
     }
 
-    static vector<string> binaryPrimitiveNames{
-        "fx+",      "fx-",  "fx*",        "fxlogor",    "fxlogand", "fx=",
-        "fx<",      "fx<=", "fx>",        "fx>=",       "cons",     "set-car!",
-        "set-cdr!", "eq?",  "vector-ref", "string-ref", "char="};
-
     string primitiveName = "";
     size_t idx;
 
@@ -219,8 +164,8 @@ bool TryParseBinaryPrimitive(string expr, string *outPrimitiveName,
         primitiveName = primitiveName + expr[idx];
     }
 
-    if (find(binaryPrimitiveNames.begin(), binaryPrimitiveNames.end(),
-             primitiveName) == binaryPrimitiveNames.end()) {
+    if (find(primList.begin(), primList.end(), primitiveName) ==
+        primList.end()) {
         return false;
     }
 
@@ -228,7 +173,31 @@ bool TryParseBinaryPrimitive(string expr, string *outPrimitiveName,
         *outPrimitiveName = primitiveName;
     }
 
-    return TryParseVariableNumOfSubExpr(expr, idx, outArgs, 2);
+    return TryParseVariableNumOfSubExpr(expr, idx, outArgs, arity);
+}
+
+bool TryParseUnaryPrimitive(string expr, string *outPrimitiveName,
+                            vector<string> *outArgs) {
+    static vector<string> unaryPrimitiveNames{
+        "fxadd1",        "fxsub1",      "fixnum->char", "char->fixnum",
+        "fixnum?",       "fxzero?",     "null?",        "boolean?",
+        "char?",         "not",         "fxlognot",     "pair?",
+        "car",           "cdr",         "make-vector",  "vector?",
+        "vector-length", "make-string", "string?",      "string-length"};
+
+    return TryParsePrimitve(1, unaryPrimitiveNames, expr, outPrimitiveName,
+                            outArgs);
+}
+
+bool TryParseBinaryPrimitive(string expr, string *outPrimitiveName,
+                             vector<string> *outArgs) {
+    static vector<string> binaryPrimitiveNames{
+        "fx+",      "fx-",  "fx*",        "fxlogor",    "fxlogand", "fx=",
+        "fx<",      "fx<=", "fx>",        "fx>=",       "cons",     "set-car!",
+        "set-cdr!", "eq?",  "vector-ref", "string-ref", "char="};
+
+    return TryParsePrimitve(2, binaryPrimitiveNames, expr, outPrimitiveName,
+                            outArgs);
 }
 
 bool TryParseIfExpr(string expr, vector<string> *outIfParts) {

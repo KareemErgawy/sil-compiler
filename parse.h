@@ -14,7 +14,7 @@ bool IsImmediate(std::string token);
 bool IsVarName(std::string token);
 bool TryParseUnaryPrimitive(std::string expr,
                             std::string *outPrimitiveName = nullptr,
-                            std::string *outArg = nullptr);
+                            std::vector<std::string> *outArgs = nullptr);
 bool TryParseBinaryPrimitive(std::string expr,
                              std::string *outPrimitiveName = nullptr,
                              std::vector<std::string> *outArgs = nullptr);

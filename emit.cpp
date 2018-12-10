@@ -971,9 +971,10 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
     }
 
     string primitiveName;
-    string arg;
+    vector<string> unaryArgs;
 
-    if (TryParseUnaryPrimitive(expr, &primitiveName, &arg)) {
+    if (TryParseUnaryPrimitive(expr, &primitiveName, &unaryArgs)) {
+        assert(unaryArgs.size() == 1);
         static unordered_map<string, TUnaryPrimitiveEmitter> unaryEmitters{
             {"fxadd1", EmitFxAdd1},
             {"fxsub1", EmitFxSub1},
@@ -996,13 +997,14 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
             {"string?", EmitIsString},
             {"string-length", EmitStringLength}};
         assert(unaryEmitters[primitiveName] != nullptr);
-        return unaryEmitters[primitiveName](stackIdx, env, arg, isTail);
+        return unaryEmitters[primitiveName](stackIdx, env, unaryArgs[0],
+                                            isTail);
     }
 
-    vector<string> args;
+    vector<string> binaryArgs;
 
-    if (TryParseBinaryPrimitive(expr, &primitiveName, &args)) {
-        assert(args.size() == 2);
+    if (TryParseBinaryPrimitive(expr, &primitiveName, &binaryArgs)) {
+        assert(binaryArgs.size() == 2);
         static unordered_map<string, TBinaryPrimitiveEmitter> binaryEmitters{
             {"fx+", EmitFxAdd},
             {"fx-", EmitFxSub},
@@ -1022,8 +1024,8 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
             {"string-ref", EmitStringRef},
             {"char=", EmitIsCharEq}};
         assert(binaryEmitters[primitiveName] != nullptr);
-        return binaryEmitters[primitiveName](stackIdx, env, args[0], args[1],
-                                             isTail);
+        return binaryEmitters[primitiveName](stackIdx, env, binaryArgs[0],
+                                             binaryArgs[1], isTail);
     }
 
     vector<string> ifParts;
