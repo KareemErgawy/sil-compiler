@@ -183,7 +183,8 @@ bool TryParseUnaryPrimitive(string expr, string *outPrimitiveName,
         "fixnum?",       "fxzero?",     "null?",        "boolean?",
         "char?",         "not",         "fxlognot",     "pair?",
         "car",           "cdr",         "make-vector",  "vector?",
-        "vector-length", "make-string", "string?",      "string-length"};
+        "vector-length", "make-string", "string?",      "string-length",
+        "procedure?"};
 
     return TryParsePrimitve(1, unaryPrimitiveNames, expr, outPrimitiveName,
                             outArgs);
