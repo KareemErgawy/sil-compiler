@@ -924,6 +924,14 @@ string EmitTailProcCall(int stackIdx, TEnvironment env, string procName,
     auto oldParamStackIdx = stackIdx - WordSize;
     auto newParamStackIdx = -WordSize;
 
+    if (env.find(procName) != env.end()) {
+        callOS << EmitVarRef(env, procName, false)
+
+               << "    movq %rax, %rbx\n"
+
+               << "    sarq $" << WordSizeLg2 << ", %rbx\n";
+    }
+
     for (auto p : params) {
         callOS << "    movq " << oldParamStackIdx << "(%rsp), %rax\n"
                << "    movq %rax, " << newParamStackIdx << "(%rsp)\n";
@@ -934,11 +942,7 @@ string EmitTailProcCall(int stackIdx, TEnvironment env, string procName,
     if (env.find(procName) == env.end()) {
         callOS << "    jmp " << gLambdaTable[procName] << "\n";
     } else {
-        callOS << EmitVarRef(env, procName, false)
-
-               << "    sarq $" << WordSizeLg2 << ", %rax\n"
-
-               << "    jmp *%rax\n";
+        callOS << "    jmp *%rbx\n";
     }
 
     return callOS.str();
