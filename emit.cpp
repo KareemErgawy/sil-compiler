@@ -898,9 +898,21 @@ string EmitProcCall(int stackIdx, TEnvironment env, string procName,
     // 2 - Call the procedure.
     //
     // 3 - Adjust the pointer to its original place before the call.
-    callOS << "    addq $" << (stackIdx + WordSize) << ", %rsp\n"
-           << "    call " << gLambdaTable[procName] << "\n"
-           << "    subq $" << (stackIdx + WordSize) << ", %rsp\n";
+
+    if (env.find(procName) == env.end()) {
+        callOS << "    addq $" << (stackIdx + WordSize) << ", %rsp\n"
+               << "    call " << gLambdaTable[procName] << "\n";
+    } else {
+        callOS << EmitVarRef(env, procName, false)
+
+               << "    sarq $" << WordSizeLg2 << ", %rax\n"
+
+               << "    addq $" << (stackIdx + WordSize) << ", %rsp\n"
+
+               << "    call *%rax\n";
+    }
+
+    callOS << "    subq $" << (stackIdx + WordSize) << ", %rsp\n";
 
     return callOS.str();
 }
@@ -919,7 +931,15 @@ string EmitTailProcCall(int stackIdx, TEnvironment env, string procName,
         newParamStackIdx -= WordSize;
     }
 
-    callOS << "    jmp " << gLambdaTable[procName] << "\n";
+    if (env.find(procName) == env.end()) {
+        callOS << "    jmp " << gLambdaTable[procName] << "\n";
+    } else {
+        callOS << EmitVarRef(env, procName, false)
+
+               << "    sarq $" << WordSizeLg2 << ", %rax\n"
+
+               << "    jmp *%rax\n";
+    }
 
     return callOS.str();
 }
