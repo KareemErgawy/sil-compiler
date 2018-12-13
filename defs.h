@@ -39,13 +39,10 @@ const unsigned int CharShift = 8;
 const unsigned int CharMask = 0xFF;
 const unsigned int CharTag = 0x0F;
 
-const unsigned int PairMask = 0x07;
+const unsigned int HeapObjMask = 0x07;
 const unsigned int PairTag = 0x01;
-
-const unsigned int VectorMask = 0x07;
+const unsigned int ClosureTag = 0x02;
 const unsigned int VectorTag = 0x05;
-
-const unsigned int StringMask = 0x07;
 const unsigned int StringTag = 0x06;
 
 const int WordSize = 8;

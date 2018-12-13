@@ -7,6 +7,8 @@
 
 using namespace std;
 
+ostringstream gAllLambdasOS;
+
 string EmitExpr(int stackIdx, TEnvironment env, string expr,
                 bool isTail = false);
 
@@ -419,7 +421,7 @@ string EmitIsPair(int stackIdx, TEnvironment env, string isPairArg,
     // TODO Reduce code duplication in this other xxx? primitives.
     exprOS << EmitExpr(stackIdx, env, isPairArg)
 
-           << "    and $" << PairMask << ", %al\n"
+           << "    and $" << HeapObjMask << ", %al\n"
 
            << "    cmp $" << PairTag << ", %al\n"
 
@@ -522,7 +524,7 @@ string EmitIsVector(int stackIdx, TEnvironment env, string isVectorArg,
 
     exprOS << EmitExpr(stackIdx, env, isVectorArg)
 
-           << "    and $" << VectorMask << ", %al\n"
+           << "    and $" << HeapObjMask << ", %al\n"
 
            << "    cmp $" << VectorTag << ", %al\n"
 
@@ -644,7 +646,7 @@ string EmitIsString(int stackIdx, TEnvironment env, string isVectorArg,
 
     exprOS << EmitExpr(stackIdx, env, isVectorArg)
 
-           << "    and $" << StringMask << ", %al\n"
+           << "    and $" << HeapObjMask << ", %al\n"
 
            << "    cmp $" << StringTag << ", %al\n"
 
@@ -668,6 +670,29 @@ string EmitStringLength(int stackIdx, TEnvironment env, string expr,
     exprOS << EmitExpr(stackIdx, env, expr)
 
            << "    movq -" << StringTag << "(%rax), %rax\n"
+
+           << (isTail ? "    ret\n" : "");
+
+    return exprOS.str();
+}
+
+string EmitIsProcedure(int stackIdx, TEnvironment env, string isProcArg,
+                       bool isTail) {
+    ostringstream exprOS;
+
+    exprOS << EmitExpr(stackIdx, env, isProcArg)
+
+           << "    and $" << HeapObjMask << ", %al\n"
+
+           << "    cmp $" << ClosureTag << ", %al\n"
+
+           << "    sete %al\n"
+
+           << "    movzbq %al, %rax\n"
+
+           << "    sal $" << BoolBit << ", %al\n"
+
+           << "    or $" << BoolF << ", %al\n"
 
            << (isTail ? "    ret\n" : "");
 
@@ -905,15 +930,8 @@ void CreateLambdaTable(const TBindings &lambdas) {
     }
 }
 
-string EmitLambda(string lambdaLabel, string lambda) {
-    vector<string> formalArgs;
-    string body;
-
-    if (!TryParseLambda(lambda, &formalArgs, &body)) {
-        std::cerr << "Error trying to emit lambda.\n";
-        exit(1);
-    }
-
+string EmitLambda(string lambdaLabel, const vector<string> &formalArgs,
+                  string body) {
     TEnvironment lambdaEnv;
     auto stackIdx = -WordSize;
 
@@ -936,7 +954,15 @@ string EmitLetrecLambdas(const TBindings &lambdas) {
     ostringstream allLambdasOS;
 
     for (auto l : lambdas) {
-        allLambdasOS << EmitLambda(gLambdaTable[l.first], l.second);
+        vector<string> formalArgs;
+        string body;
+
+        if (!TryParseLambda(l.second, &formalArgs, &body)) {
+            std::cerr << "Error trying to emit lambda.\n";
+            exit(1);
+        }
+
+        allLambdasOS << EmitLambda(gLambdaTable[l.first], formalArgs, body);
     }
 
     return allLambdasOS.str();
@@ -995,7 +1021,8 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
             {"vector-length", EmitVectorLength},
             {"make-string", EmitMakeString},
             {"string?", EmitIsString},
-            {"string-length", EmitStringLength}};
+            {"string-length", EmitStringLength},
+            {"procedure?", EmitIsProcedure}};
         assert(unaryEmitters[primitiveName] != nullptr);
         return unaryEmitters[primitiveName](stackIdx, env, unaryArgs[0],
                                             isTail);
@@ -1066,6 +1093,20 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
         return EmitLetAsteriskExpr(stackIdx, env, bindings2, letBody2, isTail);
     }
 
+    vector<string> formalArgs;
+    string body;
+
+    if (TryParseLambda(expr, &formalArgs, &body)) {
+        auto label = UniqueLabel();
+        gAllLambdasOS << EmitLambda(label, formalArgs, body) << "\n\n";
+        ostringstream exprOS;
+        exprOS << "    leaq " << label << "(%rip), %rax\n"
+               << "    salq $" << WordSizeLg2 << ", %rax\n"
+               << "    orq $" << ClosureTag << ", %rax\n";
+
+        return exprOS.str();
+    }
+
     string procName;
     vector<string> params;
 
@@ -1081,6 +1122,8 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
 }
 
 string EmitProgram(string programSource) {
+    gAllLambdasOS.clear();
+
     ostringstream programEmissionStream;
     programEmissionStream << "    .text\n\n";
 
@@ -1093,7 +1136,15 @@ string EmitProgram(string programSource) {
         progBody.push_back(programSource);
     }
 
+    ostringstream schemeEntryOS;
+
+    for (const auto &expr : progBody) {
+        schemeEntryOS << EmitExpr(-WordSize, TEnvironment(), expr);
+    }
+
     programEmissionStream
+        << gAllLambdasOS.str()
+
         << "    .globl scheme_entry\n"
         << "    .type scheme_entry, @function\n"
         << "scheme_entry:\n"
@@ -1103,19 +1154,17 @@ string EmitProgram(string programSource) {
         << "    movq %rdi, 40(%rcx)\n"
         << "    movq %rbp, 48(%rcx)\n"
         << "    movq %rsp, 56(%rcx)\n"
-        << "    movq %rsi, %rsp\n"   // Load stack space pointer into %rsp.
-        << "    movq %rdx, %rbp\n";  // Load heap space pointer into %rbp.
+        << "    movq %rsi, %rsp\n"  // Load stack space pointer into %rsp.
+        << "    movq %rdx, %rbp\n"  // Load heap space pointer into %rbp.
 
-    for (const auto &expr : progBody) {
-        programEmissionStream << EmitExpr(-WordSize, TEnvironment(), expr);
-    }
+        << schemeEntryOS.str()
 
-    programEmissionStream << "    movq 8(%rcx), %rbx\n"
-                          << "    movq 32(%rcx), %rsi\n"
-                          << "    movq 40(%rcx), %rdi\n"
-                          << "    movq 48(%rcx), %rbp\n"
-                          << "    movq 56(%rcx), %rsp\n"
-                          << "    ret\n";
+        << "    movq 8(%rcx), %rbx\n"
+        << "    movq 32(%rcx), %rsi\n"
+        << "    movq 40(%rcx), %rdi\n"
+        << "    movq 48(%rcx), %rbp\n"
+        << "    movq 56(%rcx), %rsp\n"
+        << "    ret\n";
 
     return programEmissionStream.str();
 }

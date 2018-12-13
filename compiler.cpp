@@ -46,7 +46,9 @@ int main(int argc, char *argv[]) {
         "/home/ergawy/repos/inc-compiler/src/tests-1.8-req.scm",
         "/home/ergawy/repos/inc-compiler/src/tests-1.9.1-req.scm",
         "/home/ergawy/repos/inc-compiler/src/tests-1.9.2-req.scm",
-        "/home/ergawy/repos/inc-compiler/src/tests-1.9.3-req.scm"};
+        "/home/ergawy/repos/inc-compiler/src/tests-1.9.3-req.scm",
+        "/home/ergawy/repos/inc-compiler/src/tests-2.1-req.scm",
+    };
 
     int testCaseCounter = 1;
     int failedTestCaseCounter = 0;
