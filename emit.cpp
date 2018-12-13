@@ -1142,6 +1142,7 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
 }
 
 string EmitProgram(string programSource) {
+    gAllLambdasOS.str("");
     gAllLambdasOS.clear();
 
     ostringstream programEmissionStream;
