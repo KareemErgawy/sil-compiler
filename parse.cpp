@@ -178,7 +178,7 @@ bool TryParsePrimitve(int arity, const vector<string> &primList, string expr,
 
 bool TryParseUnaryPrimitive(string expr, string *outPrimitiveName,
                             vector<string> *outArgs) {
-    static vector<string> unaryPrimitiveNames{
+    static const vector<string> unaryPrimitiveNames{
         "fxadd1",        "fxsub1",      "fixnum->char", "char->fixnum",
         "fixnum?",       "fxzero?",     "null?",        "boolean?",
         "char?",         "not",         "fxlognot",     "pair?",
@@ -192,7 +192,7 @@ bool TryParseUnaryPrimitive(string expr, string *outPrimitiveName,
 
 bool TryParseBinaryPrimitive(string expr, string *outPrimitiveName,
                              vector<string> *outArgs) {
-    static vector<string> binaryPrimitiveNames{
+    static const vector<string> binaryPrimitiveNames{
         "fx+",      "fx-",  "fx*",        "fxlogor",    "fxlogand", "fx=",
         "fx<",      "fx<=", "fx>",        "fx>=",       "cons",     "set-car!",
         "set-cdr!", "eq?",  "vector-ref", "string-ref", "char="};
@@ -203,15 +203,15 @@ bool TryParseBinaryPrimitive(string expr, string *outPrimitiveName,
 
 bool TryParseTernaryPrimitive(string expr, string *outPrimitiveName,
                               vector<string> *outArgs) {
-    static vector<string> ternaryPrimitiveNames{"if", "vector-set!",
-                                                "string-set!"};
+    static const vector<string> ternaryPrimitiveNames{"if", "vector-set!",
+                                                      "string-set!"};
     return TryParsePrimitve(3, ternaryPrimitiveNames, expr, outPrimitiveName,
                             outArgs);
 }
 
 bool TryParseVariableArityPrimitive(string expr, string *outPrimitiveName,
                                     vector<string> *outArgs) {
-    static vector<string> primitiveNames{"and", "or", "begin"};
+    static const vector<string> primitiveNames{"and", "or", "begin"};
     return TryParsePrimitve(-1, primitiveNames, expr, outPrimitiveName,
                             outArgs);
 }
