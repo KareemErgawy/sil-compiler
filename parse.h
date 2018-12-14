@@ -31,7 +31,8 @@ bool TryParseLetAsteriskExpr(std::string expr,
                              std::vector<std::string> *outLetBody = nullptr);
 bool TryParseLambda(std::string expr,
                     std::vector<std::string> *outVars = nullptr,
-                    std::string *outBody = nullptr);
+                    std::string *outBody = nullptr,
+                    std::vector<std::string> *outPossibleFreeVars = nullptr);
 bool TryParseProcCallExpr(std::string expr, std::string *outProcName = nullptr,
                           std::vector<std::string> *outParams = nullptr);
 bool TryParseLetrec(std::string expr, TBindings *outBindings = nullptr,

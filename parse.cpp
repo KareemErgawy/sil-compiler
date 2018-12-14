@@ -345,8 +345,64 @@ bool TryParseLetAsteriskExpr(string expr, TOrderedBindings *outBindings,
            TryParseLetBody(expr, idx, outLetBody);
 }
 
-bool TryParseLambda(string expr, vector<string> *outFormalArgs,
-                    string *outBody) {
+void CollectLambdaFreeVars(string body, const vector<string> &formalArgs,
+                           vector<string> *outFreeVars) {
+    assert(IsExpr(body));
+    static const string delimitiers = "()[] ";
+
+    for (int i = 0; i < body.size();) {
+        if (delimitiers.find(body[i]) != string::npos) {
+            ++i;
+            continue;
+        }
+
+        int tokenStart = i;
+
+        for (; (delimitiers.find(body[i]) == string::npos) && (i < body.size());
+             ++i) {
+        }
+
+        assert(tokenStart < i);
+
+        string token = body.substr(tokenStart, i - tokenStart);
+
+        if (token == "lambda" || token == "let") {
+            int numOfParen = 1;
+
+            for (; i < body.size() && numOfParen > 0; ++i) {
+                if (body[i] == '(') {
+                    ++numOfParen;
+                    continue;
+                }
+
+                if (body[i] == ')') {
+                    --numOfParen;
+                    continue;
+                }
+            }
+
+            continue;
+        }
+
+        // NOTE I don't check whether the token matches one of the language
+        // primitives in order to leave room for adding the capability to redefe
+        // these primitives in the future.
+        if (IsVarName(token)) {
+            auto isFormalArg = std::find(formalArgs.begin(), formalArgs.end(),
+                                         token) != formalArgs.end();
+            auto isAlreadyAdded =
+                std::find(outFreeVars->begin(), outFreeVars->end(), token) !=
+                outFreeVars->end();
+
+            if (!isFormalArg && !isAlreadyAdded) {
+                outFreeVars->push_back(token);
+            }
+        }
+    }
+}
+
+bool TryParseLambda(string expr, vector<string> *outFormalArgs, string *outBody,
+                    vector<string> *outPossibleFreeVars) {
     auto idx = TryParseSyntaxElementPrefix("lambda", expr);
 
     if (idx == -1) {
@@ -400,7 +456,15 @@ bool TryParseLambda(string expr, vector<string> *outFormalArgs,
         *outBody = body;
     }
 
-    return IsExpr(body);
+    if (!IsExpr(body)) {
+        return false;
+    }
+
+    if (outFormalArgs != nullptr && outFreeVars != nullptr) {
+        CollectLambdaFreeVars(body, *outFormalArgs, outFreeVars);
+    }
+
+    return true;
 }
 
 bool TryParseProcCallExpr(string expr, string *outProcName,
