@@ -905,7 +905,7 @@ string EmitProcCall(int stackIdx, TEnvironment env, string procName,
     } else {
         callOS << EmitVarRef(env, procName, false)
 
-               << "    sarq $" << WordSizeLg2 << ", %rax\n"
+               << "    movq -" << ClosureTag << "(%rax), %rax\n"
 
                << "    addq $" << (stackIdx + WordSize) << ", %rsp\n"
 
@@ -927,9 +927,7 @@ string EmitTailProcCall(int stackIdx, TEnvironment env, string procName,
     if (env.find(procName) != env.end()) {
         callOS << EmitVarRef(env, procName, false)
 
-               << "    movq %rax, %rbx\n"
-
-               << "    sarq $" << WordSizeLg2 << ", %rbx\n";
+               << "    movq -" << ClosureTag << "(%rax), %rbx\n";
     }
 
     for (auto p : params) {
@@ -1123,10 +1121,13 @@ string EmitExpr(int stackIdx, TEnvironment env, string expr, bool isTail) {
     if (TryParseLambda(expr, &formalArgs, &body)) {
         auto label = UniqueLabel();
         gAllLambdasOS << EmitLambda(label, formalArgs, body) << "\n\n";
+        // TODO Get the naming for lambda and closure related parts right.
         ostringstream exprOS;
         exprOS << "    leaq " << label << "(%rip), %rax\n"
-               << "    salq $" << WordSizeLg2 << ", %rax\n"
-               << "    orq $" << ClosureTag << ", %rax\n";
+               << "    movq %rax, (%rbp)\n"  // Save the lambda ptr on the heap.
+               << "    movq %rbp, %rax\n"
+               << "    orq $" << ClosureTag << ", %rax\n"
+               << "    addq $" << WordSize << ", %rbp\n";
 
         return exprOS.str();
     }
