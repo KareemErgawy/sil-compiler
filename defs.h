@@ -8,19 +8,26 @@
 
 using TBindings = std::unordered_map<std::string, std::string>;
 using TOrderedBindings = std::vector<std::pair<std::string, std::string>>;
+// Maps local variables to their index on the stack.
 using TEnvironment = std::unordered_map<std::string, int>;
+// Maps captured free variables by a lambda to their index on the heap.
+using TClosureEnvironment = std::unordered_map<std::string, int>;
 using TLambdaTable = std::unordered_map<std::string, std::string>;
 
-using TUnaryPrimitiveEmitter = std::string (*)(int, TEnvironment, std::string,
-                                               bool);
-using TBinaryPrimitiveEmitter = std::string (*)(int, TEnvironment, std::string,
-                                                std::string, bool);
-using TTernaryPrimitiveEmitter = std::string (*)(int, TEnvironment, std::string,
+using TUnaryPrimitiveEmitter = std::string (*)(int, TEnvironment,
+                                               const TClosureEnvironment &,
+                                               std::string, bool);
+using TBinaryPrimitiveEmitter = std::string (*)(int, TEnvironment,
+                                                const TClosureEnvironment &,
+                                                std::string, std::string, bool);
+using TTernaryPrimitiveEmitter = std::string (*)(int, TEnvironment,
+                                                 const TClosureEnvironment &,
                                                  std::string, std::string,
-                                                 bool);
+                                                 std::string, bool);
 
 using TVaribaleArityPrimitiveEmitter =
-    std::string (*)(int, TEnvironment, const std::vector<std::string>&, bool);
+    std::string (*)(int, TEnvironment, const TClosureEnvironment &,
+                    const std::vector<std::string> &, bool);
 
 const unsigned int FxShift = 2;
 const unsigned int FxMask = 0x03;

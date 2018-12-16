@@ -346,7 +346,7 @@ bool TryParseLetAsteriskExpr(string expr, TOrderedBindings *outBindings,
 }
 
 void CollectLambdaFreeVars(string body, const vector<string> &formalArgs,
-                           vector<string> *outFreeVars) {
+                           vector<string> *outPossibleFreeVars) {
     assert(IsExpr(body));
     static const string delimitiers = "()[] ";
 
@@ -391,11 +391,12 @@ void CollectLambdaFreeVars(string body, const vector<string> &formalArgs,
             auto isFormalArg = std::find(formalArgs.begin(), formalArgs.end(),
                                          token) != formalArgs.end();
             auto isAlreadyAdded =
-                std::find(outFreeVars->begin(), outFreeVars->end(), token) !=
-                outFreeVars->end();
+                std::find(outPossibleFreeVars->begin(),
+                          outPossibleFreeVars->end(),
+                          token) != outPossibleFreeVars->end();
 
             if (!isFormalArg && !isAlreadyAdded) {
-                outFreeVars->push_back(token);
+                outPossibleFreeVars->push_back(token);
             }
         }
     }
@@ -460,8 +461,8 @@ bool TryParseLambda(string expr, vector<string> *outFormalArgs, string *outBody,
         return false;
     }
 
-    if (outFormalArgs != nullptr && outFreeVars != nullptr) {
-        CollectLambdaFreeVars(body, *outFormalArgs, outFreeVars);
+    if (outFormalArgs != nullptr && outPossibleFreeVars != nullptr) {
+        CollectLambdaFreeVars(body, *outFormalArgs, outPossibleFreeVars);
     }
 
     return true;
