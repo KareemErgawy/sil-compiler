@@ -76,6 +76,7 @@ bool IsLocalOrCapturedVar(TEnvironment env, const TClosureEnvironment& closEnv,
 string EmitVarRef(TEnvironment env, const TClosureEnvironment& closEnv,
                   string expr, bool isTail) {
     assert(IsLocalOrCapturedVar(env, closEnv, expr));
+
     if (env.count(expr)) {
         auto stackIdx = env.at(expr);
         return "    movq " + to_string(stackIdx) + "(%rsp), %rax\n" +
@@ -827,15 +828,19 @@ string EmitIfExpr(int stackIdx, TEnvironment env,
 
                        << "    je " << altLabel << "\n"
 
-                       << EmitExpr(stackIdx, env, closEnv, conseq, isTail)
+                       << EmitExpr(stackIdx, env, closEnv, conseq, isTail);
 
-                       << "    jmp " << endLabel << "\n"
+    if (!isTail) {
+        exprEmissionStream << "    jmp " << endLabel << "\n";
+    }
 
-                       << altLabel << ":\n"
+    exprEmissionStream << altLabel << ":\n"
 
-                       << EmitExpr(stackIdx, env, closEnv, alt, isTail)
+                       << EmitExpr(stackIdx, env, closEnv, alt, isTail);
 
-                       << endLabel << ":\n";
+    if (!isTail) {
+        exprEmissionStream << endLabel << ":\n";
+    }
 
     return exprEmissionStream.str();
 }
@@ -966,7 +971,7 @@ string EmitProcCall(int stackIdx, TEnvironment env,
     //
     // 3 - Adjust the pointer to its original place before the call.
 
-    if (env.find(procName) == env.end()) {
+    if (!IsLocalOrCapturedVar(env, closEnv, procName)) {
         callOS << "    addq $" << stackIdx << ", %rsp\n"
                << "    call " << gLambdaTable[procName] << "\n";
     } else {
@@ -987,7 +992,7 @@ string EmitProcCall(int stackIdx, TEnvironment env,
 
     callOS << "    subq $" << stackIdx << ", %rsp\n";
 
-    if (env.find(procName) != env.end()) {
+    if (IsLocalOrCapturedVar(env, closEnv, procName)) {
         callOS << EmitStackLoad(stackIdx, "rbp");
         stackIdx += WordSize;
     }
@@ -1003,7 +1008,7 @@ string EmitTailProcCall(int stackIdx, TEnvironment env,
     auto oldParamStackIdx = stackIdx - WordSize * 2;
     auto newParamStackIdx = -WordSize;
 
-    if (env.find(procName) != env.end()) {
+    if (IsLocalOrCapturedVar(env, closEnv, procName)) {
         callOS << EmitVarRef(env, closEnv, procName, false)
 
                << "    movq -" << ClosureTag << "(%rax), %rbx\n";
@@ -1016,7 +1021,7 @@ string EmitTailProcCall(int stackIdx, TEnvironment env,
         newParamStackIdx -= WordSize;
     }
 
-    if (env.find(procName) == env.end()) {
+    if (!IsLocalOrCapturedVar(env, closEnv, procName)) {
         callOS << "    jmp " << gLambdaTable[procName] << "\n";
     } else {
         callOS << "    jmp *%rbx\n";
