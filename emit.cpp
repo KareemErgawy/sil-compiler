@@ -86,9 +86,9 @@ string EmitVarRef(TEnvironment env, const TClosureEnvironment& closEnv,
                (isTail ? "    ret\n" : "");
     }
 
-    auto heapIdx = closEnv.at(expr);
+    auto heapIdx = closEnv.at(expr) - ClosureTag;
     return "    # Free var ref: " + expr + ".\n" + "    movq " +
-           to_string(heapIdx) + "(%rbp), %rax\n" + (isTail ? "    ret\n" : "");
+           to_string(heapIdx) + "(%rdi), %rax\n" + (isTail ? "    ret\n" : "");
 }
 
 string EmitFxAddImmediate(int stackIdx, TEnvironment env,
@@ -1051,13 +1051,11 @@ string EmitProcCall(int stackIdx, TEnvironment env,
         callOS << "    addq $" << stackIdx << ", %rsp\n"
                << "    call " << gLambdaTable[procName] << "\n";
     } else {
-        callOS << EmitStackSave(stackIdx, "rbp");
+        callOS << EmitStackSave(stackIdx, "rdi");
 
         callOS << EmitVarRef(env, closEnv, procName, false)
 
-               << "    movq %rax, %rbp\n"
-
-               << "    addq $" << (WordSize - ClosureTag) << ", %rbp\n"
+               << "    movq %rax, %rdi\n"
 
                << "    movq -" << ClosureTag << "(%rax), %rax\n"
 
@@ -1069,7 +1067,7 @@ string EmitProcCall(int stackIdx, TEnvironment env,
     callOS << "    subq $" << stackIdx << ", %rsp\n";
 
     if (IsLocalOrCapturedVar(env, closEnv, procName)) {
-        callOS << EmitStackLoad(stackIdx, "rbp");
+        callOS << EmitStackLoad(stackIdx, "rdi");
         stackIdx += WordSize;
     }
 
@@ -1088,9 +1086,7 @@ string EmitTailProcCall(int stackIdx, TEnvironment env,
     if (IsLocalOrCapturedVar(env, closEnv, procName)) {
         callOS << EmitVarRef(env, closEnv, procName, false)
 
-               << "    movq %rax, %rbp\n"
-
-               << "    addq $" << (WordSize - ClosureTag) << ", %rbp\n"
+               << "    movq %rax, %rdi\n"
 
                << "    movq -" << ClosureTag << "(%rax), %rbx\n";
     }
@@ -1308,7 +1304,7 @@ string EmitExpr(int stackIdx, TEnvironment env,
                                      false)
                        << "    movq %rax, " << (fvHeapIdx + WordSize)
                        << "(%rbp)\n";
-                newClosEnv[possibleFreeVars[i]] = fvHeapIdx;
+                newClosEnv[possibleFreeVars[i]] = fvHeapIdx + WordSize;
                 ++numFreeVars;
             }
         }
