@@ -19,6 +19,12 @@
 
 // TODO Read the implemented Scheme standard.
 
+// TODO Add support for memory debugging tool:
+//   - Compiler emits calls to C functions that log information about different
+//   memory events (stack store/load, heap store/load).
+//   - A tool provides a time-lapse view of such events with a slider that can
+//   play back a program's interaction with memory.
+
 using namespace std;
 
 string Exec(const char *cmd) {
