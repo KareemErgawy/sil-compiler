@@ -1297,10 +1297,10 @@ string EmitExpr(int stackIdx, TEnvironment env,
         TClosureEnvironment newClosEnv;
 
         for (int i = 0; i < possibleFreeVars.size(); ++i) {
-            if (IsLocalOrCapturedVar(env, newClosEnv, possibleFreeVars[i])) {
+            if (IsLocalOrCapturedVar(env, closEnv, possibleFreeVars[i])) {
                 auto fvHeapIdx = numFreeVars * WordSize;
                 exprOS << "      # Capturing: " << possibleFreeVars[i] << ".\n"
-                       << EmitVarRef(env, newClosEnv, possibleFreeVars[i],
+                       << EmitVarRef(env, closEnv, possibleFreeVars[i],
                                      false)
                        << "    movq %rax, " << (fvHeapIdx + WordSize)
                        << "(%rbp)\n";
