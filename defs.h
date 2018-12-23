@@ -16,18 +16,19 @@ using TLambdaTable = std::unordered_map<std::string, std::string>;
 
 using TUnaryPrimitiveEmitter = std::string (*)(int, TEnvironment,
                                                const TClosureEnvironment &,
-                                               std::string, bool);
+                                               std::string, bool, int);
 using TBinaryPrimitiveEmitter = std::string (*)(int, TEnvironment,
                                                 const TClosureEnvironment &,
-                                                std::string, std::string, bool);
+                                                std::string, std::string, bool,
+                                                int);
 using TTernaryPrimitiveEmitter = std::string (*)(int, TEnvironment,
                                                  const TClosureEnvironment &,
                                                  std::string, std::string,
-                                                 std::string, bool);
+                                                 std::string, bool, int);
 
 using TVaribaleArityPrimitiveEmitter =
     std::string (*)(int, TEnvironment, const TClosureEnvironment &,
-                    const std::vector<std::string> &, bool);
+                    const std::vector<std::string> &, bool, int);
 
 const unsigned int FxShift = 2;
 const unsigned int FxMask = 0x03;
