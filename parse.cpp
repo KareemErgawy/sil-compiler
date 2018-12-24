@@ -195,7 +195,7 @@ bool TryParseBinaryPrimitive(string expr, string *outPrimitiveName,
     static const vector<string> binaryPrimitiveNames{
         "fx+",      "fx-",  "fx*",        "fxlogor",    "fxlogand", "fx=",
         "fx<",      "fx<=", "fx>",        "fx>=",       "cons",     "set-car!",
-        "set-cdr!", "eq?",  "vector-ref", "string-ref", "char="};
+        "set-cdr!", "eq?",  "vector-ref", "string-ref", "char=",    "set!"};
 
     return TryParsePrimitve(2, binaryPrimitiveNames, expr, outPrimitiveName,
                             outArgs);
