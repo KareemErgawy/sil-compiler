@@ -451,14 +451,15 @@ bool TryParseLambda(string expr, vector<string> *outFormalArgs, string *outBody,
         return false;
     }
 
-    auto body = expr.substr(idx, expr.size() - 1 - idx);
+    vector<string> lambdaBodyExprs;
+    if (!TryParseVariableNumOfSubExpr(expr, idx, &lambdaBodyExprs)) {
+        return false;
+    }
+
+    auto body = string("(begin ") + expr.substr(idx, expr.size() - idx);
 
     if (outBody != nullptr) {
         *outBody = body;
-    }
-
-    if (!IsExpr(body)) {
-        return false;
     }
 
     if (outFormalArgs != nullptr && outPossibleFreeVars != nullptr) {
