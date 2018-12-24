@@ -11,7 +11,8 @@ ostringstream gAllLambdasOS;
 
 string EmitExpr(int stackIdx, TEnvironment env,
                 const TClosureEnvironment& closEnv, string expr,
-                bool isTail = false);
+                bool isTail = false,
+                int numFormalParamsInContainingLambda = -1);
 
 string UniqueLabel(string prefix = "") {
     static unsigned int count = 0;
@@ -70,13 +71,23 @@ int ImmediateRep(string token) {
     return (stoi(token) << FxShift) | FxTag;
 }
 
+bool IsLocalVar(TEnvironment env, string possibleVarName) {
+    return env.count(possibleVarName);
+}
+
+bool IsCapturedVar(const TClosureEnvironment& closEnv, string possibleVarName) {
+    return closEnv.count(possibleVarName);
+}
+
 bool IsLocalOrCapturedVar(TEnvironment env, const TClosureEnvironment& closEnv,
                           string possibleVarName) {
-    return env.count(possibleVarName) || closEnv.count(possibleVarName);
+    return IsLocalVar(env, possibleVarName) ||
+           IsCapturedVar(closEnv, possibleVarName);
 }
 
 string EmitVarRef(TEnvironment env, const TClosureEnvironment& closEnv,
-                  string expr, bool isTail) {
+                  string expr, bool isTail,
+                  int numFormalParamsInContainingLambda) {
     assert(IsLocalOrCapturedVar(env, closEnv, expr));
 
     if (env.count(expr)) {
@@ -91,9 +102,26 @@ string EmitVarRef(TEnvironment env, const TClosureEnvironment& closEnv,
            to_string(heapIdx) + "(%rdi), %rax\n" + (isTail ? "    ret\n" : "");
 }
 
+string EmitVarVal(TEnvironment env, const TClosureEnvironment& closEnv,
+                  string expr, bool isTail,
+                  int numFormalParamsInContainingLambda) {
+    assert(IsLocalOrCapturedVar(env, closEnv, expr));
+    ostringstream varValOS;
+
+    varValOS << EmitVarRef(env, closEnv, expr, false,
+                           numFormalParamsInContainingLambda)
+
+             << "    movq (%rax), %rax\n"
+
+             << (isTail ? "    ret\n" : "");
+
+    return varValOS.str();
+}
+
 string EmitFxAddImmediate(int stackIdx, TEnvironment env,
                           const TClosureEnvironment& closEnv, string fxAddArg,
-                          string fxAddImmediate, bool isTail) {
+                          string fxAddImmediate, bool isTail,
+                          int numFormalParamsInContainingLambda) {
     assert(IsImmediate(fxAddImmediate));
 
     ostringstream exprEmissionStream;
@@ -111,19 +139,22 @@ string EmitFxAddImmediate(int stackIdx, TEnvironment env,
 
 string EmitFxAdd1(int stackIdx, TEnvironment env,
                   const TClosureEnvironment& closEnv, string fxAdd1Arg,
-                  bool isTail) {
-    return EmitFxAddImmediate(stackIdx, env, closEnv, fxAdd1Arg, "1", isTail);
+                  bool isTail, int numFormalParamsInContainingLambda) {
+    return EmitFxAddImmediate(stackIdx, env, closEnv, fxAdd1Arg, "1", isTail,
+                              numFormalParamsInContainingLambda);
 }
 
 string EmitFxSub1(int stackIdx, TEnvironment env,
                   const TClosureEnvironment& closEnv, string fxSub1Arg,
-                  bool isTail) {
-    return EmitFxAddImmediate(stackIdx, env, closEnv, fxSub1Arg, "-1", isTail);
+                  bool isTail, int numFormalParamsInContainingLambda) {
+    return EmitFxAddImmediate(stackIdx, env, closEnv, fxSub1Arg, "-1", isTail,
+                              numFormalParamsInContainingLambda);
 }
 
 string EmitFixNumToChar(int stackIdx, TEnvironment env,
                         const TClosureEnvironment& closEnv,
-                        string fixNumToCharArg, bool isTail) {
+                        string fixNumToCharArg, bool isTail,
+                        int numFormalParamsInContainingLambda) {
     ostringstream exprEmissionStream;
     exprEmissionStream << "    # fixnum->char.\n"
                        << EmitExpr(stackIdx, env, closEnv, fixNumToCharArg)
@@ -136,7 +167,8 @@ string EmitFixNumToChar(int stackIdx, TEnvironment env,
 
 string EmitCharToFixNum(int stackIdx, TEnvironment env,
                         const TClosureEnvironment& closEnv,
-                        string charToFixNumArg, bool isTail) {
+                        string charToFixNumArg, bool isTail,
+                        int numFormalParamsInContainingLambda) {
     ostringstream exprEmissionStream;
     exprEmissionStream << "    # char->fixnum.\n"
                        << EmitExpr(stackIdx, env, closEnv, charToFixNumArg)
@@ -148,7 +180,7 @@ string EmitCharToFixNum(int stackIdx, TEnvironment env,
 
 string EmitIsFixNum(int stackIdx, TEnvironment env,
                     const TClosureEnvironment& closEnv, string isFixNumArg,
-                    bool isTail) {
+                    bool isTail, int numFormalParamsInContainingLambda) {
     ostringstream exprEmissionStream;
     exprEmissionStream << "    # fixnum?.\n"
 
@@ -173,7 +205,7 @@ string EmitIsFixNum(int stackIdx, TEnvironment env,
 
 string EmitIsFxZero(int stackIdx, TEnvironment env,
                     const TClosureEnvironment& closEnv, string isFxZeroArg,
-                    bool isTail) {
+                    bool isTail, int numFormalParamsInContainingLambda) {
     ostringstream exprEmissionStream;
     exprEmissionStream << "    # zero?.\n"
                        << EmitExpr(stackIdx, env, closEnv, isFxZeroArg)
@@ -189,7 +221,7 @@ string EmitIsFxZero(int stackIdx, TEnvironment env,
 
 string EmitIsNull(int stackIdx, TEnvironment env,
                   const TClosureEnvironment& closEnv, string isNullArg,
-                  bool isTail) {
+                  bool isTail, int numFormalParamsInContainingLambda) {
     ostringstream exprEmissionStream;
     exprEmissionStream << "    # null?.\n"
 
@@ -212,7 +244,7 @@ string EmitIsNull(int stackIdx, TEnvironment env,
 
 string EmitIsBoolean(int stackIdx, TEnvironment env,
                      const TClosureEnvironment& closEnv, string isBooleanArg,
-                     bool isTail) {
+                     bool isTail, int numFormalParamsInContainingLambda) {
     ostringstream exprEmissionStream;
     exprEmissionStream << "    # boolean?.\n"
 
@@ -237,7 +269,7 @@ string EmitIsBoolean(int stackIdx, TEnvironment env,
 
 string EmitIsChar(int stackIdx, TEnvironment env,
                   const TClosureEnvironment& closEnv, string isCharArg,
-                  bool isTail) {
+                  bool isTail, int numFormalParamsInContainingLambda) {
     ostringstream exprEmissionStream;
     exprEmissionStream << "    # char?.\n"
 
@@ -261,7 +293,8 @@ string EmitIsChar(int stackIdx, TEnvironment env,
 }
 
 string EmitNot(int stackIdx, TEnvironment env,
-               const TClosureEnvironment& closEnv, string notArg, bool isTail) {
+               const TClosureEnvironment& closEnv, string notArg, bool isTail,
+               int numFormalParamsInContainingLambda) {
     ostringstream exprEmissionStream;
     exprEmissionStream << "    # not.\n"
 
@@ -284,7 +317,7 @@ string EmitNot(int stackIdx, TEnvironment env,
 
 string EmitFxLogNot(int stackIdx, TEnvironment env,
                     const TClosureEnvironment& closEnv, string fxLogNotArg,
-                    bool isTail) {
+                    bool isTail, int numFormalParamsInContainingLambda) {
     ostringstream exprEmissionStream;
     exprEmissionStream << "    # fxlognot.\n"
 
@@ -299,7 +332,7 @@ string EmitFxLogNot(int stackIdx, TEnvironment env,
 
 string EmitFxAdd(int stackIdx, TEnvironment env,
                  const TClosureEnvironment& closEnv, string lhs, string rhs,
-                 bool isTail) {
+                 bool isTail, int numFormalParamsInContainingLambda) {
     ostringstream exprEmissionStream;
     exprEmissionStream << "    # fx+.\n"
 
@@ -318,7 +351,7 @@ string EmitFxAdd(int stackIdx, TEnvironment env,
 
 string EmitFxSub(int stackIdx, TEnvironment env,
                  const TClosureEnvironment& closEnv, string lhs, string rhs,
-                 bool isTail) {
+                 bool isTail, int numFormalParamsInContainingLambda) {
     ostringstream exprEmissionStream;
     exprEmissionStream << "    # fx-.\n"
 
@@ -337,7 +370,7 @@ string EmitFxSub(int stackIdx, TEnvironment env,
 
 string EmitFxMul(int stackIdx, TEnvironment env,
                  const TClosureEnvironment& closEnv, string lhs, string rhs,
-                 bool isTail) {
+                 bool isTail, int numFormalParamsInContainingLambda) {
     ostringstream exprEmissionStream;
     exprEmissionStream << "    # fx*.\n"
 
@@ -358,7 +391,7 @@ string EmitFxMul(int stackIdx, TEnvironment env,
 
 string EmitFxLogOr(int stackIdx, TEnvironment env,
                    const TClosureEnvironment& closEnv, string lhs, string rhs,
-                   bool isTail) {
+                   bool isTail, int numFormalParamsInContainingLambda) {
     ostringstream exprEmissionStream;
     exprEmissionStream << "    # fxlogor.\n"
 
@@ -377,7 +410,7 @@ string EmitFxLogOr(int stackIdx, TEnvironment env,
 
 string EmitFxLogAnd(int stackIdx, TEnvironment env,
                     const TClosureEnvironment& closEnv, string lhs, string rhs,
-                    bool isTail) {
+                    bool isTail, int numFormalParamsInContainingLambda) {
     ostringstream exprEmissionStream;
     exprEmissionStream << "    # fxlogand.\n"
 
@@ -396,7 +429,8 @@ string EmitFxLogAnd(int stackIdx, TEnvironment env,
 
 string EmitCmp(int stackIdx, TEnvironment env,
                const TClosureEnvironment& closEnv, string lhs, string rhs,
-               string setcc, bool isTail) {
+               string setcc, bool isTail,
+               int numFormalParamsInContainingLambda) {
     ostringstream exprEmissionStream;
     exprEmissionStream << "    # cmp(" << setcc << ").\n"
 
@@ -423,43 +457,49 @@ string EmitCmp(int stackIdx, TEnvironment env,
 
 string EmitIsEq(int stackIdx, TEnvironment env,
                 const TClosureEnvironment& closEnv, string lhs, string rhs,
-                bool isTail) {
-    return EmitCmp(stackIdx, env, closEnv, lhs, rhs, "sete", isTail);
+                bool isTail, int numFormalParamsInContainingLambda) {
+    return EmitCmp(stackIdx, env, closEnv, lhs, rhs, "sete", isTail,
+                   numFormalParamsInContainingLambda);
 }
 
 string EmitIsCharEq(int stackIdx, TEnvironment env,
                     const TClosureEnvironment& closEnv, string lhs, string rhs,
-                    bool isTail) {
-    return EmitCmp(stackIdx, env, closEnv, lhs, rhs, "sete", isTail);
+                    bool isTail, int numFormalParamsInContainingLambda) {
+    return EmitCmp(stackIdx, env, closEnv, lhs, rhs, "sete", isTail,
+                   numFormalParamsInContainingLambda);
 }
 
 string EmitFxLT(int stackIdx, TEnvironment env,
                 const TClosureEnvironment& closEnv, string lhs, string rhs,
-                bool isTail) {
-    return EmitCmp(stackIdx, env, closEnv, lhs, rhs, "setl", isTail);
+                bool isTail, int numFormalParamsInContainingLambda) {
+    return EmitCmp(stackIdx, env, closEnv, lhs, rhs, "setl", isTail,
+                   numFormalParamsInContainingLambda);
 }
 
 string EmitFxLE(int stackIdx, TEnvironment env,
                 const TClosureEnvironment& closEnv, string lhs, string rhs,
-                bool isTail) {
-    return EmitCmp(stackIdx, env, closEnv, lhs, rhs, "setle", isTail);
+                bool isTail, int numFormalParamsInContainingLambda) {
+    return EmitCmp(stackIdx, env, closEnv, lhs, rhs, "setle", isTail,
+                   numFormalParamsInContainingLambda);
 }
 
 string EmitFxGT(int stackIdx, TEnvironment env,
                 const TClosureEnvironment& closEnv, string lhs, string rhs,
-                bool isTail) {
-    return EmitCmp(stackIdx, env, closEnv, lhs, rhs, "setg", isTail);
+                bool isTail, int numFormalParamsInContainingLambda) {
+    return EmitCmp(stackIdx, env, closEnv, lhs, rhs, "setg", isTail,
+                   numFormalParamsInContainingLambda);
 }
 
 string EmitFxGE(int stackIdx, TEnvironment env,
                 const TClosureEnvironment& closEnv, string lhs, string rhs,
-                bool isTail) {
-    return EmitCmp(stackIdx, env, closEnv, lhs, rhs, "setge", isTail);
+                bool isTail, int numFormalParamsInContainingLambda) {
+    return EmitCmp(stackIdx, env, closEnv, lhs, rhs, "setge", isTail,
+                   numFormalParamsInContainingLambda);
 }
 
 string EmitCons(int stackIdx, TEnvironment env,
                 const TClosureEnvironment& closEnv, string first, string second,
-                bool isTail) {
+                bool isTail, int numFormalParamsInContainingLambda) {
     ostringstream exprOS;
 
     exprOS << "    # cons.\n"
@@ -490,7 +530,7 @@ string EmitCons(int stackIdx, TEnvironment env,
 
 string EmitIsPair(int stackIdx, TEnvironment env,
                   const TClosureEnvironment& closEnv, string isPairArg,
-                  bool isTail) {
+                  bool isTail, int numFormalParamsInContainingLambda) {
     ostringstream exprOS;
 
     // TODO Reduce code duplication in this other xxx? primitives.
@@ -516,11 +556,13 @@ string EmitIsPair(int stackIdx, TEnvironment env,
 }
 
 string EmitCar(int stackIdx, TEnvironment env,
-               const TClosureEnvironment& closEnv, string carArg, bool isTail) {
+               const TClosureEnvironment& closEnv, string carArg, bool isTail,
+               int numFormalParamsInContainingLambda) {
     ostringstream exprOS;
 
     exprOS << "    # car.\n"
-           << EmitExpr(stackIdx, env, closEnv, carArg, isTail)
+           << EmitExpr(stackIdx, env, closEnv, carArg, isTail,
+                       numFormalParamsInContainingLambda)
            << "    movq -1(%rax), %rax\n"
            << (isTail ? "    ret\n" : "");
 
@@ -528,12 +570,14 @@ string EmitCar(int stackIdx, TEnvironment env,
 }
 
 string EmitCdr(int stackIdx, TEnvironment env,
-               const TClosureEnvironment& closEnv, string carArg, bool isTail) {
+               const TClosureEnvironment& closEnv, string carArg, bool isTail,
+               int numFormalParamsInContainingLambda) {
     ostringstream exprOS;
 
     exprOS << "    # cdr.\n"
 
-           << EmitExpr(stackIdx, env, closEnv, carArg, isTail)
+           << EmitExpr(stackIdx, env, closEnv, carArg, isTail,
+                       numFormalParamsInContainingLambda)
 
            << "    movq 7(%rax), %rax\n"
 
@@ -544,7 +588,9 @@ string EmitCdr(int stackIdx, TEnvironment env,
 
 string EmitSetPairElement(int stackIdx, TEnvironment env,
                           const TClosureEnvironment& closEnv, string oldPair,
-                          string newCar, bool isTail, int relOffset) {
+                          string newCar, bool isTail,
+                          int numFormalParamsInContainingLambda,
+                          int relOffset) {
     ostringstream exprOS;
 
     exprOS << ((relOffset == -1) ? "    # set-car!.\n" : "    # set-cdr!.\n")
@@ -568,21 +614,23 @@ string EmitSetPairElement(int stackIdx, TEnvironment env,
 
 string EmitSetCar(int stackIdx, TEnvironment env,
                   const TClosureEnvironment& closEnv, string oldPair,
-                  string newCar, bool isTail) {
+                  string newCar, bool isTail,
+                  int numFormalParamsInContainingLambda) {
     return EmitSetPairElement(stackIdx, env, closEnv, oldPair, newCar, isTail,
-                              -1);
+                              numFormalParamsInContainingLambda, -1);
 }
 
 string EmitSetCdr(int stackIdx, TEnvironment env,
                   const TClosureEnvironment& closEnv, string oldPair,
-                  string newCdr, bool isTail) {
+                  string newCdr, bool isTail,
+                  int numFormalParamsInContainingLambda) {
     return EmitSetPairElement(stackIdx, env, closEnv, oldPair, newCdr, isTail,
-                              7);
+                              numFormalParamsInContainingLambda, 7);
 }
 
 string EmitMakeVector(int stackIdx, TEnvironment env,
                       const TClosureEnvironment& closEnv, string lengthExpr,
-                      bool isTail) {
+                      bool isTail, int numFormalParamsInContainingLambda) {
     ostringstream exprOS;
 
     exprOS << "    # make-vector.\n"
@@ -612,7 +660,7 @@ string EmitMakeVector(int stackIdx, TEnvironment env,
 
 string EmitIsVector(int stackIdx, TEnvironment env,
                     const TClosureEnvironment& closEnv, string isVectorArg,
-                    bool isTail) {
+                    bool isTail, int numFormalParamsInContainingLambda) {
     ostringstream exprOS;
 
     exprOS << "    # vector?.\n"
@@ -638,7 +686,7 @@ string EmitIsVector(int stackIdx, TEnvironment env,
 
 string EmitVectorLength(int stackIdx, TEnvironment env,
                         const TClosureEnvironment& closEnv, string expr,
-                        bool isTail) {
+                        bool isTail, int numFormalParamsInContainingLambda) {
     ostringstream exprOS;
 
     exprOS << "    # vector-length.\n"
@@ -654,7 +702,8 @@ string EmitVectorLength(int stackIdx, TEnvironment env,
 
 string EmitVectorSet(int stackIdx, TEnvironment env,
                      const TClosureEnvironment& closEnv, string vec, string idx,
-                     string val, bool isTail) {
+                     string val, bool isTail,
+                     int numFormalParamsInContainingLambda) {
     ostringstream exprOS;
 
     exprOS << "    # vector-set!.\n"
@@ -688,7 +737,7 @@ string EmitVectorSet(int stackIdx, TEnvironment env,
 
 string EmitVectorRef(int stackIdx, TEnvironment env,
                      const TClosureEnvironment& closEnv, string vec, string idx,
-                     bool isTail) {
+                     bool isTail, int numFormalParamsInContainingLambda) {
     ostringstream exprOS;
 
     exprOS << "    # vector-ref.\n"
@@ -719,7 +768,7 @@ string EmitVectorRef(int stackIdx, TEnvironment env,
 // TODO Remove duplication between string and vector primitives.
 string EmitMakeString(int stackIdx, TEnvironment env,
                       const TClosureEnvironment& closEnv, string lengthExpr,
-                      bool isTail) {
+                      bool isTail, int numFormalParamsInContainingLambda) {
     ostringstream exprOS;
 
     exprOS << "    # make-string.\n"
@@ -749,7 +798,7 @@ string EmitMakeString(int stackIdx, TEnvironment env,
 
 string EmitIsString(int stackIdx, TEnvironment env,
                     const TClosureEnvironment& closEnv, string isVectorArg,
-                    bool isTail) {
+                    bool isTail, int numFormalParamsInContainingLambda) {
     ostringstream exprOS;
 
     exprOS << "    # string?.\n"
@@ -775,7 +824,7 @@ string EmitIsString(int stackIdx, TEnvironment env,
 
 string EmitStringLength(int stackIdx, TEnvironment env,
                         const TClosureEnvironment& closEnv, string expr,
-                        bool isTail) {
+                        bool isTail, int numFormalParamsInContainingLambda) {
     ostringstream exprOS;
 
     exprOS << "    # string-length.\n"
@@ -791,7 +840,7 @@ string EmitStringLength(int stackIdx, TEnvironment env,
 
 string EmitIsProcedure(int stackIdx, TEnvironment env,
                        const TClosureEnvironment& closEnv, string isProcArg,
-                       bool isTail) {
+                       bool isTail, int numFormalParamsInContainingLambda) {
     ostringstream exprOS;
 
     exprOS << "    # procedure?.\n"
@@ -817,7 +866,8 @@ string EmitIsProcedure(int stackIdx, TEnvironment env,
 
 string EmitStringSet(int stackIdx, TEnvironment env,
                      const TClosureEnvironment& closEnv, string str, string idx,
-                     string val, bool isTail) {
+                     string val, bool isTail,
+                     int numFormalParamsInContainingLambda) {
     ostringstream exprOS;
 
     exprOS << "    # string-set!.\n"
@@ -851,7 +901,7 @@ string EmitStringSet(int stackIdx, TEnvironment env,
 
 string EmitStringRef(int stackIdx, TEnvironment env,
                      const TClosureEnvironment& closEnv, string str, string idx,
-                     bool isTail) {
+                     bool isTail, int numFormalParamsInContainingLambda) {
     ostringstream exprOS;
 
     exprOS << "    # string-ref.\n"
@@ -880,7 +930,8 @@ string EmitStringRef(int stackIdx, TEnvironment env,
 }
 string EmitIfExpr(int stackIdx, TEnvironment env,
                   const TClosureEnvironment& closEnv, string cond,
-                  string conseq, string alt, bool isTail) {
+                  string conseq, string alt, bool isTail,
+                  int numFormalParamsInContainingLambda) {
     string altLabel = UniqueLabel();
     string endLabel = UniqueLabel();
 
@@ -893,7 +944,8 @@ string EmitIfExpr(int stackIdx, TEnvironment env,
 
                        << "    je " << altLabel << "\n"
 
-                       << EmitExpr(stackIdx, env, closEnv, conseq, isTail);
+                       << EmitExpr(stackIdx, env, closEnv, conseq, isTail,
+                                   numFormalParamsInContainingLambda);
 
     if (!isTail) {
         exprEmissionStream << "    jmp " << endLabel << "\n";
@@ -901,7 +953,8 @@ string EmitIfExpr(int stackIdx, TEnvironment env,
 
     exprEmissionStream << altLabel << ":\n"
 
-                       << EmitExpr(stackIdx, env, closEnv, alt, isTail);
+                       << EmitExpr(stackIdx, env, closEnv, alt, isTail,
+                                   numFormalParamsInContainingLambda);
 
     if (!isTail) {
         exprEmissionStream << endLabel << ":\n";
@@ -912,13 +965,16 @@ string EmitIfExpr(int stackIdx, TEnvironment env,
 
 string EmitLogicalExpr(int stackIdx, TEnvironment env,
                        const TClosureEnvironment& closEnv,
-                       const vector<string>& args, bool isAnd, bool isTail) {
+                       const vector<string>& args, bool isAnd, bool isTail,
+                       int numFormalParamsInContainingLambda) {
     ostringstream exprEmissionStream;
 
     if (args.size() == 0) {
-        exprEmissionStream << EmitExpr(stackIdx, env, closEnv, "#t", isTail);
+        exprEmissionStream << EmitExpr(stackIdx, env, closEnv, "#t", isTail,
+                                       numFormalParamsInContainingLambda);
     } else if (args.size() == 1) {
-        exprEmissionStream << EmitExpr(stackIdx, env, closEnv, args[0], isTail);
+        exprEmissionStream << EmitExpr(stackIdx, env, closEnv, args[0], isTail,
+                                       numFormalParamsInContainingLambda);
     } else {
         ostringstream newExpr;
         newExpr << "(" << (isAnd ? "and" : "or");
@@ -930,15 +986,17 @@ string EmitLogicalExpr(int stackIdx, TEnvironment env,
         newExpr << ")";
 
         if (isAnd) {
-            exprEmissionStream << "    # and.\n"
+            exprEmissionStream
+                << "    # and.\n"
 
-                               << EmitIfExpr(stackIdx, env, closEnv, args[0],
-                                             newExpr.str(), "#f", isTail);
+                << EmitIfExpr(stackIdx, env, closEnv, args[0], newExpr.str(),
+                              "#f", isTail, numFormalParamsInContainingLambda);
         } else {
             exprEmissionStream << "    # or.\n"
 
                                << EmitIfExpr(stackIdx, env, closEnv, args[0],
-                                             "#t", newExpr.str(), isTail);
+                                             "#t", newExpr.str(), isTail,
+                                             numFormalParamsInContainingLambda);
         }
     }
 
@@ -947,20 +1005,24 @@ string EmitLogicalExpr(int stackIdx, TEnvironment env,
 
 string EmitAndExpr(int stackIdx, TEnvironment env,
                    const TClosureEnvironment& closEnv,
-                   const vector<string>& andArgs, bool isTail) {
-    return EmitLogicalExpr(stackIdx, env, closEnv, andArgs, true, isTail);
+                   const vector<string>& andArgs, bool isTail,
+                   int numFormalParamsInContainingLambda) {
+    return EmitLogicalExpr(stackIdx, env, closEnv, andArgs, true, isTail,
+                           numFormalParamsInContainingLambda);
 }
 
 string EmitOrExpr(int stackIdx, TEnvironment env,
                   const TClosureEnvironment& closEnv,
-                  const vector<string>& orArgs, bool isTail) {
-    return EmitLogicalExpr(stackIdx, env, closEnv, orArgs, false, isTail);
+                  const vector<string>& orArgs, bool isTail,
+                  int numFormalParamsInContainingLambda) {
+    return EmitLogicalExpr(stackIdx, env, closEnv, orArgs, false, isTail,
+                           numFormalParamsInContainingLambda);
 }
 
 string EmitLetExpr(int stackIdx, TEnvironment env,
                    const TClosureEnvironment& closEnv,
                    const TBindings& bindings, vector<string> letBody,
-                   bool isTail) {
+                   bool isTail, int numFormalParamsInContainingLambda) {
     ostringstream exprEmissionStream;
     int si = stackIdx;
     TEnvironment envExtension;
@@ -972,7 +1034,16 @@ string EmitLetExpr(int stackIdx, TEnvironment env,
 
                            << EmitExpr(si, env, closEnv, b.second)
 
-                           << EmitStackSave(si);
+                           << "    # Promote var from stack to heap.\n"
+
+                           << "    movq %rax, (%rbp)\n"
+
+                           << "    movq %rbp, %rax\n"
+
+                           << EmitStackSave(si)
+
+                           << "    addq $" << WordSize << ", %rbp\n";
+
         envExtension.insert({b.first, si});
         si -= WordSize;
     }
@@ -983,7 +1054,8 @@ string EmitLetExpr(int stackIdx, TEnvironment env,
 
     for (int i = 0; i < letBody.size(); ++i) {
         exprEmissionStream << EmitExpr(si, env, closEnv, letBody[i],
-                                       isTail && (i == letBody.size() - 1));
+                                       isTail && (i == letBody.size() - 1),
+                                       numFormalParamsInContainingLambda);
     }
 
     return exprEmissionStream.str();
@@ -992,7 +1064,8 @@ string EmitLetExpr(int stackIdx, TEnvironment env,
 string EmitLetAsteriskExpr(int stackIdx, TEnvironment env,
                            const TClosureEnvironment& closEnv,
                            const TOrderedBindings& bindings,
-                           vector<string> letBody, bool isTail) {
+                           vector<string> letBody, bool isTail,
+                           int numFormalParamsInContainingLambda) {
     ostringstream exprEmissionStream;
     int si = stackIdx;
 
@@ -1001,7 +1074,17 @@ string EmitLetAsteriskExpr(int stackIdx, TEnvironment env,
     for (auto b : bindings) {
         exprEmissionStream << "      # Binding: " << b.first << ".\n"
                            << EmitExpr(si, env, closEnv, b.second)
-                           << EmitStackSave(si);
+
+                           << "    # Promote var from stack to heap.\n"
+
+                           << "    movq %rax, (%rbp)\n"
+
+                           << "    movq %rbp, %rax\n"
+
+                           << EmitStackSave(si)
+
+                           << "    addq $" << WordSize << ", %rbp\n";
+
         env[b.first] = si;
         si -= WordSize;
     }
@@ -1018,15 +1101,29 @@ static TLambdaTable gLambdaTable;
 
 string EmitSaveProcParamsOnStack(int stackIdx, TEnvironment env,
                                  const TClosureEnvironment& closEnv,
-                                 vector<string> params) {
+                                 vector<string> params, bool promoteToHeap) {
     ostringstream callOS;
     // Leave room to store the return address and %rbp on the stack.
     auto paramStackIdx = stackIdx - (WordSize * 2);
 
     for (auto p : params) {
         callOS << "    # Emit param on stack: " << p << ".\n"
-               << EmitExpr(paramStackIdx, env, closEnv, p)
-               << EmitStackSave(paramStackIdx);
+               << EmitExpr(paramStackIdx, env, closEnv, p);
+
+        if (promoteToHeap) {
+            callOS << "    # Promote var from stack to heap.\n"
+
+                   << "    movq %rax, (%rbp)\n"
+
+                   << "    movq %rbp, %rax\n";
+        }
+
+        callOS << EmitStackSave(paramStackIdx);
+
+        if (promoteToHeap) {
+            callOS << "    addq $" << WordSize << ", %rbp\n";
+        }
+
         paramStackIdx -= WordSize;
     }
 
@@ -1035,9 +1132,10 @@ string EmitSaveProcParamsOnStack(int stackIdx, TEnvironment env,
 
 string EmitProcCall(int stackIdx, TEnvironment env,
                     const TClosureEnvironment& closEnv, string procName,
-                    vector<string> params) {
+                    vector<string> params,
+                    int numFormalParamsInContainingLambda) {
     ostringstream callOS;
-    callOS << EmitSaveProcParamsOnStack(stackIdx, env, closEnv, params);
+    callOS << EmitSaveProcParamsOnStack(stackIdx, env, closEnv, params, true);
 
     // 1 - Adjust the base pointer to the current top of the stack.
     //
@@ -1053,7 +1151,8 @@ string EmitProcCall(int stackIdx, TEnvironment env,
     } else {
         callOS << EmitStackSave(stackIdx, "rdi");
 
-        callOS << EmitVarRef(env, closEnv, procName, false)
+        callOS << EmitVarVal(env, closEnv, procName, false,
+                             numFormalParamsInContainingLambda)
 
                << "    movq %rax, %rdi\n"
 
@@ -1076,32 +1175,52 @@ string EmitProcCall(int stackIdx, TEnvironment env,
 
 string EmitTailProcCall(int stackIdx, TEnvironment env,
                         const TClosureEnvironment& closEnv, string procName,
-                        vector<string> params) {
+                        vector<string> params,
+                        int numFormalParamsInContainingLambda) {
     ostringstream callOS;
     callOS << "    # Tail call: " << procName << ".\n"
-           << EmitSaveProcParamsOnStack(stackIdx, env, closEnv, params);
+           << EmitSaveProcParamsOnStack(stackIdx, env, closEnv, params, false);
     auto oldParamStackIdx = stackIdx - WordSize * 2;
     auto newParamStackIdx = -WordSize;
 
     if (IsLocalOrCapturedVar(env, closEnv, procName)) {
-        callOS << EmitVarRef(env, closEnv, procName, false)
+        callOS << EmitVarVal(env, closEnv, procName, false,
+                             numFormalParamsInContainingLambda)
 
                << "    movq %rax, %rdi\n"
 
-               << "    movq -" << ClosureTag << "(%rax), %rbx\n";
+               << "    movq -" << ClosureTag << "(%rax), %r9\n";
     }
 
+    int paramIdx = 0;
+
     for (auto p : params) {
-        callOS << "    movq " << oldParamStackIdx << "(%rsp), %rax\n"
+        callOS << "    movq " << oldParamStackIdx << "(%rsp), %rbx\n";
+
+        if (paramIdx >= numFormalParamsInContainingLambda) {
+            callOS << "    # Promote var from stack to heap.\n"
+
+                   << "    movq %rax, (%rbp)\n"
+
+                   << "    movq %rbp, %rax\n"
+
+                   << "    addq $" << WordSize << ", %rbp\n";
+        } else {
+            callOS << "    movq " << newParamStackIdx << "(%rsp), %rax\n";
+        }
+
+        callOS << "    movq %rbx, (%rax)\n"
+
                << "    movq %rax, " << newParamStackIdx << "(%rsp)\n";
         oldParamStackIdx -= WordSize;
         newParamStackIdx -= WordSize;
+        ++paramIdx;
     }
 
     if (!IsLocalOrCapturedVar(env, closEnv, procName)) {
         callOS << "    jmp " << gLambdaTable[procName] << "\n";
     } else {
-        callOS << "    jmp *%rbx\n";
+        callOS << "    jmp *%r9\n";
     }
 
     return callOS.str();
@@ -1127,7 +1246,8 @@ string EmitLambda(string lambdaLabel, const vector<string>& formalArgs,
     lambdaOS << "    .globl " << lambdaLabel << "\n"
              << "    .type " << lambdaLabel << ", @function\n"
              << lambdaLabel << ":\n"
-             << EmitExpr(stackIdx, lambdaEnv, closEnv, body, /* isTail */ true);
+             << EmitExpr(stackIdx, lambdaEnv, closEnv, body, /* isTail */ true,
+                         formalArgs.size());
 
     return lambdaOS.str();
 }
@@ -1146,7 +1266,8 @@ string EmitLetrecLambdas(const TBindings& lambdas) {
         }
 
         allLambdasOS << EmitLambda(gLambdaTable[l.first], formalArgs, body,
-                                   TClosureEnvironment());
+                                   TClosureEnvironment())
+                     << "\n\n";
     }
 
     return allLambdasOS.str();
@@ -1154,7 +1275,8 @@ string EmitLetrecLambdas(const TBindings& lambdas) {
 
 string EmitBegin(int stackIdx, TEnvironment env,
                  const TClosureEnvironment& closEnv,
-                 const vector<string>& beginExprList, bool isTail) {
+                 const vector<string>& beginExprList, bool isTail,
+                 int numFormalParamsInContainingLambda) {
     assert(beginExprList.size() > 0);
     ostringstream exprOS;
 
@@ -1166,8 +1288,29 @@ string EmitBegin(int stackIdx, TEnvironment env,
     return exprOS.str();
 }
 
+string EmitSet(int stackIdx, TEnvironment env,
+               const TClosureEnvironment& closEnv, string varToSet,
+               string newVal, bool isTail,
+               int numFormalParamsInContainingLambda) {
+    assert(IsLocalOrCapturedVar(env, closEnv, varToSet));
+    ostringstream exprOS;
+
+    exprOS << EmitExpr(stackIdx, env, closEnv, newVal)
+
+           << "    movq %rax, %rbx\n"
+
+           << EmitVarRef(env, closEnv, varToSet, false, -1)
+
+           << "    movq %rbx, (%rax)\n"
+
+           << (isTail ? "    ret\n" : "");
+
+    return exprOS.str();
+}
+
 string EmitExpr(int stackIdx, TEnvironment env,
-                const TClosureEnvironment& closEnv, string expr, bool isTail) {
+                const TClosureEnvironment& closEnv, string expr, bool isTail,
+                int numFormalParamsInContainingLambda) {
     assert(IsExpr(expr));
 
     if (IsImmediate(expr)) {
@@ -1179,7 +1322,8 @@ string EmitExpr(int stackIdx, TEnvironment env,
     }
 
     if (IsVarName(expr)) {
-        return EmitVarRef(env, closEnv, expr, isTail);
+        return EmitVarVal(env, closEnv, expr, isTail,
+                          numFormalParamsInContainingLambda);
     }
 
     string primitiveName;
@@ -1211,7 +1355,8 @@ string EmitExpr(int stackIdx, TEnvironment env,
             {"procedure?", EmitIsProcedure}};
         assert(unaryEmitters[primitiveName] != nullptr);
         return unaryEmitters[primitiveName](stackIdx, env, closEnv,
-                                            unaryArgs[0], isTail);
+                                            unaryArgs[0], isTail,
+                                            numFormalParamsInContainingLambda);
     }
 
     vector<string> binaryArgs;
@@ -1235,10 +1380,12 @@ string EmitExpr(int stackIdx, TEnvironment env,
             {"eq?", EmitIsEq},
             {"vector-ref", EmitVectorRef},
             {"string-ref", EmitStringRef},
-            {"char=", EmitIsCharEq}};
+            {"char=", EmitIsCharEq},
+            {"set!", EmitSet}};
         assert(binaryEmitters[primitiveName] != nullptr);
         return binaryEmitters[primitiveName](
-            stackIdx, env, closEnv, binaryArgs[0], binaryArgs[1], isTail);
+            stackIdx, env, closEnv, binaryArgs[0], binaryArgs[1], isTail,
+            numFormalParamsInContainingLambda);
     }
 
     vector<string> ternaryArgs;
@@ -1250,9 +1397,9 @@ string EmitExpr(int stackIdx, TEnvironment env,
             {"vector-set!", EmitVectorSet},
             {"string-set!", EmitStringSet}};
         assert(ternaryEmitters[primitiveName] != nullptr);
-        return ternaryEmitters[primitiveName](stackIdx, env, closEnv,
-                                              ternaryArgs[0], ternaryArgs[1],
-                                              ternaryArgs[2], isTail);
+        return ternaryEmitters[primitiveName](
+            stackIdx, env, closEnv, ternaryArgs[0], ternaryArgs[1],
+            ternaryArgs[2], isTail, numFormalParamsInContainingLambda);
     }
 
     vector<string> varArgs;
@@ -1262,15 +1409,17 @@ string EmitExpr(int stackIdx, TEnvironment env,
             varArityEmitters{
                 {"and", EmitAndExpr}, {"or", EmitOrExpr}, {"begin", EmitBegin}};
         assert(varArityEmitters[primitiveName] != nullptr);
-        return varArityEmitters[primitiveName](stackIdx, env, closEnv, varArgs,
-                                               isTail);
+        return varArityEmitters[primitiveName](
+            stackIdx, env, closEnv, varArgs, isTail,
+            numFormalParamsInContainingLambda);
     }
 
     TBindings bindings;
     vector<string> letBody;
 
     if (TryParseLetExpr(expr, &bindings, &letBody)) {
-        return EmitLetExpr(stackIdx, env, closEnv, bindings, letBody, isTail);
+        return EmitLetExpr(stackIdx, env, closEnv, bindings, letBody, isTail,
+                           numFormalParamsInContainingLambda);
     }
 
     TOrderedBindings bindings2;
@@ -1278,7 +1427,7 @@ string EmitExpr(int stackIdx, TEnvironment env,
 
     if (TryParseLetAsteriskExpr(expr, &bindings2, &letBody2)) {
         return EmitLetAsteriskExpr(stackIdx, env, closEnv, bindings2, letBody2,
-                                   isTail);
+                                   isTail, numFormalParamsInContainingLambda);
     }
 
     vector<string> formalArgs;
@@ -1297,11 +1446,11 @@ string EmitExpr(int stackIdx, TEnvironment env,
         TClosureEnvironment newClosEnv;
 
         for (int i = 0; i < possibleFreeVars.size(); ++i) {
-            if (IsLocalOrCapturedVar(env, closEnv, possibleFreeVars[i])) {
+            if (IsLocalOrCapturedVar(env, newClosEnv, possibleFreeVars[i])) {
                 auto fvHeapIdx = numFreeVars * WordSize;
                 exprOS << "      # Capturing: " << possibleFreeVars[i] << ".\n"
-                       << EmitVarRef(env, closEnv, possibleFreeVars[i],
-                                     false)
+                       << EmitVarRef(env, newClosEnv, possibleFreeVars[i],
+                                     false, numFormalParamsInContainingLambda)
                        << "    movq %rax, " << (fvHeapIdx + WordSize)
                        << "(%rbp)\n";
                 newClosEnv[possibleFreeVars[i]] = fvHeapIdx + WordSize;
@@ -1327,9 +1476,11 @@ string EmitExpr(int stackIdx, TEnvironment env,
 
     if (TryParseProcCallExpr(expr, &procName, &params)) {
         if (isTail) {
-            return EmitTailProcCall(stackIdx, env, closEnv, procName, params);
+            return EmitTailProcCall(stackIdx, env, closEnv, procName, params,
+                                    numFormalParamsInContainingLambda);
         } else {
-            return EmitProcCall(stackIdx, env, closEnv, procName, params);
+            return EmitProcCall(stackIdx, env, closEnv, procName, params,
+                                numFormalParamsInContainingLambda);
         }
     }
 
