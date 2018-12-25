@@ -480,19 +480,17 @@ bool TryParseProcCallExpr(string expr, string *outProcName,
     }
 
     int idx = 1;
-    auto separator = (expr.find(' ') == string::npos) ? ')' : ' ';
 
-    auto procName = expr.substr(idx, expr.find(separator) - idx);
+    string procName;
+    TryParseSubExpr(expr, idx, &procName, &idx);
 
-    if (!IsVarName(procName)) {
-        return false;
-    }
+    // if (!IsVarName(procName)) {
+    //    return false;
+    //}
 
     if (outProcName != nullptr) {
         *outProcName = procName;
     }
-
-    idx = expr.find(separator);
 
     if (SkipSpaceAndCheckIfEndOfExpr(expr, &idx)) {
         if (outParams != nullptr) {

@@ -1145,10 +1145,7 @@ string EmitProcCall(int stackIdx, TEnvironment env,
 
     callOS << "    # Call: " + procName << ".\n";
 
-    if (!IsLocalOrCapturedVar(env, closEnv, procName)) {
-        callOS << "    addq $" << stackIdx << ", %rsp\n"
-               << "    call " << gLambdaTable[procName] << "\n";
-    } else {
+    if (IsLocalOrCapturedVar(env, closEnv, procName)) {
         callOS << EmitStackSave(stackIdx, "rdi");
 
         callOS << EmitVarVal(env, closEnv, procName, false,
@@ -1161,11 +1158,27 @@ string EmitProcCall(int stackIdx, TEnvironment env,
                << "    addq $" << stackIdx << ", %rsp\n"
 
                << "    call *%rax\n";
+    } else if (!IsVarName(procName)) {
+        callOS << EmitStackSave(stackIdx, "rdi");
+
+        callOS << EmitExpr(stackIdx, env, closEnv, procName)
+
+               << "    movq %rax, %rdi\n"
+
+               << "    movq -" << ClosureTag << "(%rax), %rax\n"
+
+               << "    addq $" << stackIdx << ", %rsp\n"
+
+               << "    call *%rax\n";
+
+    } else {
+        callOS << "    addq $" << stackIdx << ", %rsp\n"
+               << "    call " << gLambdaTable[procName] << "\n";
     }
 
     callOS << "    subq $" << stackIdx << ", %rsp\n";
 
-    if (IsLocalOrCapturedVar(env, closEnv, procName)) {
+    if (IsLocalOrCapturedVar(env, closEnv, procName) || !IsVarName(procName)) {
         callOS << EmitStackLoad(stackIdx, "rdi");
         stackIdx += WordSize;
     }
@@ -1186,6 +1199,12 @@ string EmitTailProcCall(int stackIdx, TEnvironment env,
     if (IsLocalOrCapturedVar(env, closEnv, procName)) {
         callOS << EmitVarVal(env, closEnv, procName, false,
                              numFormalParamsInContainingLambda)
+
+               << "    movq %rax, %rdi\n"
+
+               << "    movq -" << ClosureTag << "(%rax), %r9\n";
+    } else if (!IsVarName(procName)) {
+        callOS << EmitExpr(stackIdx, env, closEnv, procName)
 
                << "    movq %rax, %rdi\n"
 
