@@ -1482,7 +1482,9 @@ string EmitExpr(int stackIdx, TEnvironment env,
                << "    orq $" << ClosureTag << ", %rax\n"
 
                << "    addq $" << (WordSize + (numFreeVars * WordSize))
-               << ", %rbp\n";
+               << ", %rbp\n"
+
+               << (isTail ? "    ret\n" : "");
 
         gAllLambdasOS << EmitLambda(label, formalArgs, body, newClosEnv)
                       << "\n\n";
